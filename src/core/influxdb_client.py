@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timezone
 import json
 
-from influxdb_client import InfluxDBClient, Point, WritePrecision
+from influxdb_client import InfluxDBClient as InfluxDB, Point, WritePrecision
 from influxdb_client.client.write_api import SYNCHRONOUS, ASYNCHRONOUS
 import pandas as pd
 
@@ -18,14 +18,22 @@ logger = logging.getLogger(__name__)
 class BlockchainInfluxDB:
     """InfluxDB client optimized for blockchain data storage."""
     
-    def __init__(self, url: str, token: str, org: str, bucket: str):
-        self.url = url
-        self.token = token
-        self.org = org
-        self.bucket = bucket
+    def __init__(self, config_or_url = None, token: str = None, org: str = None, bucket: str = None):
+        # Handle both Config objects and direct parameters
+        if hasattr(config_or_url, 'get'):  # It's a Config object
+            config = config_or_url
+            self.url = config.get('influxdb.url', 'http://localhost:8086')
+            self.token = config.influxdb_token
+            self.org = config.get('influxdb.org', 'glq-analytics')
+            self.bucket = config.get('influxdb.bucket', 'blockchain_data')
+        else:  # Direct parameters
+            self.url = config_or_url or 'http://localhost:8086'
+            self.token = token or ''
+            self.org = org or 'glq-analytics'
+            self.bucket = bucket or 'blockchain_data'
         
         # Initialize client
-        self.client = InfluxDBClient(url=url, token=token, org=org)
+        self.client = InfluxDB(url=self.url, token=self.token, org=self.org)
         self.write_api = self.client.write_api(write_options=SYNCHRONOUS)
         self.query_api = self.client.query_api()
         
@@ -314,3 +322,7 @@ class BlockchainInfluxDB:
     def is_connected(self) -> bool:
         """Check if client is connected."""
         return self._connected
+
+
+# Alias for compatibility
+InfluxDBClient = BlockchainInfluxDB

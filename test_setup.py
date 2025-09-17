@@ -41,7 +41,7 @@ async def test_blockchain_connection():
     
     try:
         # Create blockchain client
-        client = BlockchainClient(rpc_url="http://localhost:8545")
+        client = BlockchainClient("http://localhost:8545")
         
         # Test connection
         connected = await client.connect()
@@ -86,12 +86,10 @@ async def test_influxdb_connection():
     try:
         # Note: For this test, we'll use dummy credentials
         # You'll need to set up your actual InfluxDB token
-        db_client = BlockchainInfluxDB(
-            url="http://localhost:8086",
-            token="dummy_token",  # Replace with your actual token
-            org="glq-analytics",
-            bucket="blockchain_data"
-        )
+        # Create a simple config object for testing
+        from core.config import Config
+        config = Config()
+        db_client = BlockchainInfluxDB(config)
         
         connected = await db_client.connect()
         

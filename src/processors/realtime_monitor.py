@@ -32,21 +32,12 @@ class RealtimeMonitor:
     
     def __init__(self, config: Config):
         self.config = config
-        self.blockchain_client = BlockchainClient(
-            rpc_url=config.blockchain_rpc_url,
-            max_connections=config.max_connections,
-            timeout=config.connection_timeout
-        )
+        self.blockchain_client = BlockchainClient(config)
         
         # InfluxDB client
         self.db_client = None
         if config.influxdb_token:
-            self.db_client = BlockchainInfluxDB(
-                url=config.influxdb_url,
-                token=config.influxdb_token,
-                org=config.influxdb_org,
-                bucket=config.influxdb_bucket
-            )
+            self.db_client = BlockchainInfluxDB(config)
         
         # Monitoring configuration
         self.poll_interval = config.poll_interval or 2

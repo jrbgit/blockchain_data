@@ -27,17 +27,26 @@ logger = logging.getLogger(__name__)
 class BlockchainClient:
     """High-performance blockchain client with connection pooling and error handling."""
     
-    def __init__(self, rpc_url: str = "http://localhost:8545", 
+    def __init__(self, config_or_rpc_url = None, 
                  ws_url: Optional[str] = None,
                  max_connections: int = 20,
                  timeout: int = 30):
-        self.rpc_url = rpc_url
-        self.ws_url = ws_url
-        self.max_connections = max_connections
-        self.timeout = timeout
+        
+        # Handle both Config objects and direct RPC URL
+        if hasattr(config_or_rpc_url, 'get'):  # It's a Config object
+            config = config_or_rpc_url
+            self.rpc_url = config.get('blockchain.rpc_url', 'http://localhost:8545')
+            self.ws_url = config.get('blockchain.ws_url', ws_url)
+            self.max_connections = config.get('performance.max_connections', max_connections)
+            self.timeout = config.get('performance.connection_timeout', timeout)
+        else:  # It's a direct RPC URL string or None
+            self.rpc_url = config_or_rpc_url or "http://localhost:8545"
+            self.ws_url = ws_url
+            self.max_connections = max_connections
+            self.timeout = timeout
         
         # Initialize Web3 instance
-        self.w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         
         # Add POA middleware for chains that might need it
         try:
@@ -309,6 +318,11 @@ class BlockchainClient:
     def chain_id(self) -> Optional[int]:
         """Get cached chain ID."""
         return self._chain_id
+        
+    @property
+    def web3(self):
+        """Alias for w3 for compatibility."""
+        return self.w3
         
     async def health_check(self) -> bool:
         """Perform health check."""

@@ -524,16 +524,11 @@ async def test_defi_analytics():
     from core.influxdb_client import BlockchainInfluxDB
     
     config = Config()
-    blockchain_client = BlockchainClient(config.blockchain_rpc_url)
+    blockchain_client = BlockchainClient(config)
     
     db_client = None
     if config.influxdb_token:
-        db_client = BlockchainInfluxDB(
-            url=config.influxdb_url,
-            token=config.influxdb_token,
-            org=config.influxdb_org,
-            bucket=config.influxdb_bucket
-        )
+        db_client = BlockchainInfluxDB(config)
         await db_client.connect()
     
     defi_analytics = DeFiAnalytics(blockchain_client, db_client, config)
