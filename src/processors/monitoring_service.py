@@ -389,6 +389,46 @@ class MonitoringService:
                     <span class="metric-value" id="errors">--</span>
                 </div>
             </div>
+            
+            <div class="status-card" id="analytics-card" style="display: none;">
+                <h3>📊 Analytics Summary</h3>
+                <div class="metric">
+                    <span>🪙 Token Transfers:</span>
+                    <span class="metric-value" id="token-transfers">--</span>
+                </div>
+                <div class="metric">
+                    <span>🔄 DEX Swaps:</span>
+                    <span class="metric-value" id="dex-swaps">--</span>
+                </div>
+                <div class="metric">
+                    <span>💧 Liquidity Events:</span>
+                    <span class="metric-value" id="liquidity-events">--</span>
+                </div>
+                <div class="metric">
+                    <span>🏦 DeFi Events:</span>
+                    <span class="metric-value" id="defi-events">--</span>
+                </div>
+                <div class="metric">
+                    <span>📊 Total Analytics:</span>
+                    <span class="metric-value" id="total-analytics">--</span>
+                </div>
+            </div>
+            
+            <div class="status-card" id="analytics-performance-card" style="display: none;">
+                <h3>⚡ Analytics Performance</h3>
+                <div class="metric">
+                    <span>⏱️ Avg Processing Time:</span>
+                    <span class="metric-value" id="analytics-time">--</span>
+                </div>
+                <div class="metric">
+                    <span>⚠️ Timeouts:</span>
+                    <span class="metric-value" id="analytics-timeouts">--</span>
+                </div>
+                <div class="metric">
+                    <span>🎯 Success Rate:</span>
+                    <span class="metric-value" id="analytics-success-rate">--</span>
+                </div>
+            </div>
         </div>
         
         <div class="controls">
@@ -465,8 +505,45 @@ class MonitoringService:
             document.getElementById('errors').textContent = data.statistics?.errors || 0;
             document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
             
+            // Update analytics data if available
+            updateAnalyticsData(data);
+            
             // Update button states
             updateButtons(data);
+        }
+        
+        function updateAnalyticsData(data) {
+            const analyticsEnabled = data.statistics?.analytics_enabled;
+            const analyticsCard = document.getElementById('analytics-card');
+            const analyticsPerformanceCard = document.getElementById('analytics-performance-card');
+            
+            if (analyticsEnabled) {
+                // Show analytics cards
+                analyticsCard.style.display = 'block';
+                analyticsPerformanceCard.style.display = 'block';
+                
+                // Update analytics metrics
+                document.getElementById('token-transfers').textContent = (data.statistics?.token_transfers_found || 0).toLocaleString();
+                document.getElementById('dex-swaps').textContent = (data.statistics?.dex_swaps_found || 0).toLocaleString();
+                document.getElementById('liquidity-events').textContent = (data.statistics?.liquidity_events_found || 0).toLocaleString();
+                document.getElementById('defi-events').textContent = (data.statistics?.defi_events_found || 0).toLocaleString();
+                document.getElementById('total-analytics').textContent = (data.statistics?.total_analytics_events || 0).toLocaleString();
+                
+                // Update performance metrics
+                const avgTime = data.statistics?.analytics_processing_time || 0;
+                document.getElementById('analytics-time').textContent = avgTime > 0 ? `${avgTime.toFixed(3)}s` : '--';
+                document.getElementById('analytics-timeouts').textContent = data.statistics?.analytics_timeouts || 0;
+                
+                // Calculate success rate
+                const totalBlocks = data.statistics?.blocks_processed || 0;
+                const timeouts = data.statistics?.analytics_timeouts || 0;
+                const successRate = totalBlocks > 0 ? ((totalBlocks - timeouts) / totalBlocks * 100).toFixed(1) : '100.0';
+                document.getElementById('analytics-success-rate').textContent = `${successRate}%`;
+            } else {
+                // Hide analytics cards if not enabled
+                analyticsCard.style.display = 'none';
+                analyticsPerformanceCard.style.display = 'none';
+            }
         }
         
         function updateButtons(data) {

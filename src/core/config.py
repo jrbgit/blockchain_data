@@ -147,9 +147,31 @@ class Config:
     def analytics_config(self) -> Dict[str, Any]:
         return self._config.get('analytics', {})
     
-    def is_analytics_enabled(self, feature: str) -> bool:
-        """Check if a specific analytics feature is enabled."""
+    def is_analytics_enabled(self, feature: str = None) -> bool:
+        """Check if analytics or a specific analytics feature is enabled."""
+        if feature is None:
+            return self.analytics_config.get('enabled', True)
         return self.analytics_config.get(feature, False)
+    
+    def is_analytics_module_enabled(self, module: str) -> bool:
+        """Check if a specific analytics module is enabled."""
+        if not self.is_analytics_enabled():
+            return False
+        modules = self.analytics_config.get('modules', {})
+        return modules.get(module, {}).get('enabled', False)
+    
+    def get_analytics_realtime_config(self) -> Dict[str, Any]:
+        """Get real-time analytics configuration."""
+        return self.analytics_config.get('realtime', {
+            'enabled': True,
+            'max_processing_time': 5.0,
+            'skip_on_timeout': True
+        })
+    
+    def get_analytics_module_config(self, module: str) -> Dict[str, Any]:
+        """Get configuration for a specific analytics module."""
+        modules = self.analytics_config.get('modules', {})
+        return modules.get(module, {})
     
     # Contract configuration
     @property

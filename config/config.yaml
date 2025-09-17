@@ -36,24 +36,54 @@ processing:
   
 # Analytics Configuration
 analytics:
-  # Basic metrics
+  # Master enable/disable
+  enabled: true
+  
+  # Real-time analytics settings
+  realtime:
+    enabled: true
+    max_processing_time: 5.0  # seconds per block
+    skip_on_timeout: true     # skip analytics if processing takes too long
+    
+  # Module-specific controls
+  modules:
+    token_analytics:
+      enabled: true
+      track_erc20_transfers: true
+      track_erc721_transfers: true
+      track_erc1155_transfers: true
+      min_transfer_value: 0   # minimum value to track
+      
+    dex_analytics:
+      enabled: true
+      track_swaps: true
+      track_liquidity_changes: true
+      min_swap_value: 0       # minimum swap value to track
+      supported_protocols: ["uniswap_v2", "uniswap_v3"]
+      
+    defi_analytics:
+      enabled: true
+      track_lending: true
+      track_yield_farming: true
+      track_staking: true
+      min_position_value: 0   # minimum position size to track
+      
+    advanced_analytics:
+      enabled: true
+      wallet_clustering: true
+      contract_popularity: true
+      cross_protocol_analysis: true
+      
+  # Performance settings
+  performance:
+    batch_size: 100          # events per batch
+    max_memory_per_block: "50MB"
+    enable_parallel_processing: true
+    
+  # Basic metrics (legacy compatibility)
   calculate_block_times: true
   calculate_gas_analytics: true
   calculate_transaction_fees: true
-  
-  # Token analytics
-  track_erc20_transfers: true
-  track_erc721_transfers: true
-  track_erc1155_transfers: true
-  
-  # DEX analytics
-  track_dex_swaps: true
-  track_liquidity_changes: true
-  
-  # DeFi analytics
-  track_lending_protocols: true
-  track_yield_farming: true
-  track_staking: true
   
   # Wallet analytics
   enable_wallet_clustering: true

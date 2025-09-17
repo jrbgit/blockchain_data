@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.blockchain_client import BlockchainClient
 from core.influxdb_client import BlockchainInfluxDB
 from core.config import Config
+from analytics.advanced_analytics import AdvancedAnalytics
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -38,6 +39,20 @@ class RealtimeMonitor:
         self.db_client = None
         if config.influxdb_token:
             self.db_client = BlockchainInfluxDB(config)
+            
+        # Advanced Analytics coordinator
+        self.analytics = None
+        if self.db_client and config.is_analytics_enabled():
+            realtime_config = config.get_analytics_realtime_config()
+            if realtime_config.get('enabled', True):
+                self.analytics = AdvancedAnalytics(
+                    blockchain_client=self.blockchain_client,
+                    db_client=self.db_client,
+                    config=config
+                )
+                # Store analytics performance settings
+                self.analytics_max_time = realtime_config.get('max_processing_time', 5.0)
+                self.analytics_skip_on_timeout = realtime_config.get('skip_on_timeout', True)
         
         # Monitoring configuration
         self.poll_interval = config.poll_interval or 2
@@ -59,8 +74,20 @@ class RealtimeMonitor:
             'avg_block_time': 0.0,
             'last_block_time': None,
             'blocks_per_minute': 0.0,
-            'uptime': 0.0
+            'uptime': 0.0,
+            # Analytics statistics
+            'analytics_enabled': config.is_analytics_enabled() and self.analytics is not None,
+            'token_transfers_found': 0,
+            'dex_swaps_found': 0,
+            'liquidity_events_found': 0,
+            'defi_events_found': 0,
+            'total_analytics_events': 0,
+            'analytics_timeouts': 0,
+            'analytics_processing_time': 0.0
         }
+        
+        # Last analytics results for display
+        self._last_analytics = {}
         
         # Performance tracking
         self.recent_block_times = []
@@ -239,19 +266,67 @@ class RealtimeMonitor:
                 self.processed_blocks.discard(old_block)
                 
     async def _process_single_block(self, block_data: Dict[str, Any], block_number: int):
-        """Process a single block and its transactions."""
+        """Process a single block and its transactions, including advanced analytics."""
         try:
             # Store block data
             if self.db_client:
                 self.db_client.write_block(block_data)
-                
-            # Process transactions
+            
+            # Run advanced analytics on the block if enabled
+            if self.analytics:
+                analytics_start = time.time()
+                try:
+                    # Compute block timestamp
+                    ts = datetime.fromtimestamp(int(block_data.get('timestamp', '0x0'), 16), tz=timezone.utc)
+                    
+                    # Run analytics with timeout if configured
+                    if hasattr(self, 'analytics_max_time') and self.analytics_max_time > 0:
+                        # Use asyncio.wait_for for timeout
+                        block_results = await asyncio.wait_for(
+                            self.analytics.analyze_block(block_data, ts),
+                            timeout=self.analytics_max_time
+                        )
+                    else:
+                        # No timeout
+                        block_results = await self.analytics.analyze_block(block_data, ts)
+                    
+                    # Track analytics processing time
+                    analytics_time = time.time() - analytics_start
+                    self.stats['analytics_processing_time'] = (
+                        self.stats['analytics_processing_time'] * 0.9 + analytics_time * 0.1
+                    )
+                    
+                    # Update analytics statistics
+                    self.stats['token_transfers_found'] += block_results.get('token_transfers', 0)
+                    self.stats['dex_swaps_found'] += block_results.get('dex_swaps', 0)
+                    self.stats['liquidity_events_found'] += block_results.get('liquidity_events', 0)
+                    defi_events = block_results.get('lending_events', 0) + block_results.get('staking_events', 0) + block_results.get('yield_events', 0)
+                    self.stats['defi_events_found'] += defi_events
+                    self.stats['total_analytics_events'] += block_results.get('total_events_found', 0)
+                    
+                    # Stash last analytics results for UI
+                    self._last_analytics = block_results
+                    
+                except asyncio.TimeoutError:
+                    self.stats['analytics_timeouts'] += 1
+                    analytics_time = time.time() - analytics_start
+                    logger.warning(f"Analytics timeout for block {block_number} after {analytics_time:.2f}s")
+                    if not getattr(self, 'analytics_skip_on_timeout', True):
+                        raise  # Re-raise if we shouldn't skip
+                except Exception as ae:
+                    analytics_time = time.time() - analytics_start
+                    self.stats['analytics_processing_time'] = (
+                        self.stats['analytics_processing_time'] * 0.9 + analytics_time * 0.1
+                    )
+                    logger.debug(f"Advanced analytics failed for block {block_number}: {ae}")
+            
+            # Process transactions (DB storage and events)
             transactions = block_data.get('transactions', [])
             for tx in transactions:
                 if isinstance(tx, dict):  # Full transaction object
                     await self._process_transaction(tx, block_number)
                     self.stats['transactions_processed'] += 1
-                    
+            
         except Exception as e:
             logger.error(f"Error processing block {block_number}: {e}")
             raise
@@ -330,6 +405,52 @@ class RealtimeMonitor:
             f"{self.stats['events_processed']:,}",
             ""
         )
+        
+        # Analytics metrics section
+        if self.stats.get('analytics_enabled', False):
+            table.add_row("", "", "")  # Separator
+            table.add_row(
+                "📊 Analytics Summary",
+                f"Total: {self.stats.get('total_analytics_events', 0):,}",
+                "Advanced Analytics"
+            )
+            table.add_row(
+                "🪙 Token Transfers",
+                f"{self.stats.get('token_transfers_found', 0):,}",
+                "ERC20/721/1155"
+            )
+            table.add_row(
+                "🔄 DEX Swaps",
+                f"{self.stats.get('dex_swaps_found', 0):,}",
+                "Uniswap V2/V3"
+            )
+            table.add_row(
+                "💧 Liquidity Events",
+                f"{self.stats.get('liquidity_events_found', 0):,}",
+                "Add/Remove LP"
+            )
+            table.add_row(
+                "🏦 DeFi Events",
+                f"{self.stats.get('defi_events_found', 0):,}",
+                "Lending/Staking/Yield"
+            )
+            
+            # Analytics performance metrics
+            if self.stats.get('analytics_processing_time', 0) > 0:
+                table.add_row(
+                    "⏱️ Avg Analytics Time",
+                    f"{self.stats.get('analytics_processing_time', 0):.3f}s",
+                    f"Max: {getattr(self, 'analytics_max_time', 'N/A')}s"
+                )
+            
+            if self.stats.get('analytics_timeouts', 0) > 0:
+                table.add_row(
+                    "⚠️ Analytics Timeouts",
+                    f"{self.stats.get('analytics_timeouts', 0):,}",
+                    "Processing Skipped"
+                )
+            
+        table.add_row("", "", "")  # Separator
         table.add_row("Errors", f"{self.stats['errors']:,}", "")
         
         # Performance metrics
