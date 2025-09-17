@@ -1,0 +1,120 @@
+# GraphLinq Chain Analytics Configuration
+
+# Blockchain Connection
+blockchain:
+  name: "GraphLinq Chain"
+  chain_id: 614  # 0x266 (actual detected: 614)
+  rpc_url: "http://localhost:8545"
+  ws_url: "ws://localhost:8545"  # if WebSocket is available
+  network_type: "mainnet"
+  
+# InfluxDB Configuration
+influxdb:
+  url: "http://localhost:8086"
+  org: "glq-analytics"
+  bucket: "blockchain_data"
+  # Token will be loaded from environment variable INFLUX_TOKEN
+
+# Processing Configuration
+processing:
+  # Historical data processing
+  batch_size: 1000  # blocks per batch
+  max_workers: 8    # parallel workers
+  start_block: 0
+  end_block: "latest"
+  
+  # Real-time processing
+  real_time_enabled: true
+  poll_interval: 2  # seconds
+  confirmation_blocks: 2  # wait for confirmations
+  
+  # Data extraction settings
+  extract_transaction_traces: true
+  extract_internal_transactions: true
+  extract_logs: true
+  extract_contract_code: true
+  
+# Analytics Configuration
+analytics:
+  # Basic metrics
+  calculate_block_times: true
+  calculate_gas_analytics: true
+  calculate_transaction_fees: true
+  
+  # Token analytics
+  track_erc20_transfers: true
+  track_erc721_transfers: true
+  track_erc1155_transfers: true
+  
+  # DEX analytics
+  track_dex_swaps: true
+  track_liquidity_changes: true
+  
+  # DeFi analytics
+  track_lending_protocols: true
+  track_yield_farming: true
+  track_staking: true
+  
+  # Wallet analytics
+  enable_wallet_clustering: true
+  min_transaction_count: 10  # for clustering
+  
+  # Contract analytics
+  track_contract_deployments: true
+  analyze_contract_interactions: true
+  calculate_contract_popularity: true
+
+# Known Contract Addresses (to be populated with GLQ chain specifics)
+contracts:
+  # DEX Routers
+  dex_routers: []
+  
+  # Token Contracts
+  major_tokens: []
+  
+  # DeFi Protocols
+  lending_protocols: []
+  staking_contracts: []
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "logs/blockchain_analytics.log"
+  max_size: "100MB"
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Performance Settings
+performance:
+  # Connection pooling
+  max_connections: 20
+  connection_timeout: 30
+  
+  # Memory management
+  max_memory_usage: "4GB"
+  gc_threshold: 1000000  # records
+  
+  # Caching
+  enable_caching: true
+  cache_ttl: 3600  # seconds
+  max_cache_size: 10000
+
+# Data Retention
+retention:
+  # InfluxDB retention policies
+  raw_data_retention: "1y"      # Keep raw data for 1 year
+  analytics_retention: "5y"     # Keep analytics for 5 years
+  realtime_retention: "30d"     # Keep real-time data for 30 days
+  
+# Monitoring and Alerting
+monitoring:
+  enable_metrics: true
+  metrics_port: 8000
+  
+  # Health checks
+  health_check_interval: 60  # seconds
+  
+  # Alerts (placeholder for future implementation)
+  alerts:
+    block_processing_lag_threshold: 10  # blocks
+    error_rate_threshold: 0.05  # 5%
