@@ -313,6 +313,54 @@ class BlockchainInfluxDB:
         else:
             return "contract_call"
     
+    async def delete_data(self, measurement: str, start_time: str = "1970-01-01T00:00:00Z", end_time: str = None):
+        """Delete data from a measurement."""
+        try:
+            if not end_time:
+                # Delete all data up to now
+                end_time = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            
+            # Use InfluxDB delete API
+            delete_api = self.client.delete_api()
+            
+            # Delete data for the measurement
+            delete_api.delete(
+                start=start_time,
+                stop=end_time,
+                predicate=f'_measurement="{measurement}"',
+                bucket=self.bucket,
+                org=self.org
+            )
+            
+            logger.info(f"Deleted data from measurement: {measurement}")
+            
+        except Exception as e:
+            logger.error(f"Error deleting data from {measurement}: {e}")
+            raise
+    
+    async def clear_all_data(self):
+        """Clear all data from the bucket."""
+        try:
+            measurements = [
+                'blocks', 'transactions', 'events', 'token_transfers',
+                'dex_swaps', 'liquidity_events', 'defi_events',
+                'wallet_analytics', 'contract_analytics', 'network_metrics',
+                'contracts'
+            ]
+            
+            for measurement in measurements:
+                try:
+                    await self.delete_data(measurement)
+                    logger.info(f"Cleared measurement: {measurement}")
+                except Exception as e:
+                    logger.warning(f"Failed to clear {measurement}: {e}")
+            
+            logger.info("All data clearing completed")
+            
+        except Exception as e:
+            logger.error(f"Error clearing all data: {e}")
+            raise
+    
     def close(self):
         """Close InfluxDB connections."""
         if self.client:

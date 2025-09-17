@@ -438,7 +438,7 @@ class RealtimeMonitor:
             # Analytics performance metrics
             if self.stats.get('analytics_processing_time', 0) > 0:
                 table.add_row(
-                    "⏱️ Avg Analytics Time",
+                    "🏦 Avg Analytics",
                     f"{self.stats.get('analytics_processing_time', 0):.3f}s",
                     f"Max: {getattr(self, 'analytics_max_time', 'N/A')}s"
                 )
