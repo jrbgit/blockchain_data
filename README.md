@@ -28,12 +28,14 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 
 3. **Test the Setup**
    ```bash
-   python test_setup.py
+   python glq_analytics.py test
+   # or directly:
+   python tests/test_sync_setup.py
    ```
 
-4. **Run Historical Processing** (Test with 10 blocks)
+4. **Run Full Blockchain Sync**
    ```bash
-   python src/processors/historical_clean.py
+   python glq_analytics.py sync
    ```
 
 ## 📊 Current Status
@@ -54,6 +56,26 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 ✅ InfluxDB: PASS (Ready for data storage)
 ✅ Historical Processor: PASS (67+ blocks/sec processing rate)
 ✅ Real-time Monitor: PASS (Live monitoring with web dashboard)
+```
+
+## 📁 Project Structure
+
+```
+blockchain_data/
+├── 📁 src/                    # Core source code
+│   ├── 📁 analytics/          # Advanced analytics modules
+│   ├── 📁 core/              # Core clients and configuration
+│   └── 📁 processors/        # Data processing modules
+├── 📁 scripts/               # Executable scripts
+│   ├── full_sync_with_analytics.py
+│   ├── start_realtime_monitor.py
+│   └── start_monitor_service.py
+├── 📁 tests/                 # Test files
+├── 📁 docs/                  # Documentation
+├── 📁 config/                # Configuration files
+├── 📁 examples/              # Usage examples
+├── glq_analytics.py          # Main entry point
+└── requirements.txt          # Dependencies
 ```
 
 ## 🔧 System Architecture
@@ -178,11 +200,13 @@ python src/processors/historical_clean.py
 
 ### Start Real-time Monitoring
 ```bash
-# Command-line monitor with live display
-python start_realtime_monitor.py
+# Using main entry point
+python glq_analytics.py monitor    # Real-time monitoring
+python glq_analytics.py service    # Web dashboard service
 
-# Web dashboard service (recommended)
-python start_monitor_service.py
+# Or directly:
+python scripts/start_realtime_monitor.py
+python scripts/start_monitor_service.py
 # Then visit: http://localhost:8000/dashboard
 ```
 
