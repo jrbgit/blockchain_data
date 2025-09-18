@@ -25,8 +25,13 @@ Welcome to the comprehensive documentation for the Multi-Chain Blockchain Analyt
 - **[FIX_SUMMARY.md](docs/FIX_SUMMARY.md)** - Technical fixes and resolutions
 - **[REORGANIZATION_SUMMARY.md](docs/REORGANIZATION_SUMMARY.md)** - Project reorganization details
 
-## 🏗️ **Configuration Documentation** (`config/` directory)
+## 🏗️ **Configuration Documentation**
 
+### Environment Configuration
+- **[.env.example](.env.example)** - Comprehensive environment configuration template
+- **`.env`** - Your actual working configuration (not in git, create from .env.example)
+
+### System Configuration (`config/` directory)
 - **[config.yaml](config/config.yaml)** - Main configuration file with inline documentation
 - **[influxdb_schema.md](config/influxdb_schema.md)** - Database schema and data structure
 

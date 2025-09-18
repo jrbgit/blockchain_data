@@ -16,14 +16,20 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
    pip install -r requirements.txt
    ```
 
-2. **Configure InfluxDB**
-   - Go to http://localhost:8086
-   - Create an organization called `glq-analytics`
-   - Create a bucket called `blockchain_data`
-   - Generate an API token
-   - Copy `.env.template` to `.env` and set your token:
+2. **Configure Environment**
+   - Copy `.env.example` to `.env` and configure your settings:
+     ```bash
+     cp .env.example .env
+     ```
+   - Configure InfluxDB:
+     * Go to http://localhost:8086
+     * Create an organization called `glq-analytics`
+     * Create a bucket called `blockchain_data`
+     * Generate an API token
+   - Update your `.env` file with the actual token:
      ```
      INFLUX_TOKEN=your_actual_token_here
+     INFURA_PROJECT_ID=your_infura_project_id_here
      ```
 
 3. **Test the Setup**
