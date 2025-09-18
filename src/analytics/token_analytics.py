@@ -252,6 +252,21 @@ class TokenAnalytics:
         try:
             points = []
             for transfer in transfers:
+                # Handle large token values by converting to strings if needed
+                value = transfer.value or 0
+                token_id = transfer.token_id or 0
+                
+                # Convert large integers to strings to avoid InfluxDB overflow
+                if isinstance(value, int) and (value > 9223372036854775807 or value < -9223372036854775808):
+                    value_field = str(value)
+                else:
+                    value_field = value
+                    
+                if isinstance(token_id, int) and (token_id > 9223372036854775807 or token_id < -9223372036854775808):
+                    token_id_field = str(token_id)
+                else:
+                    token_id_field = token_id
+                
                 point = Point("token_transfers") \
                     .tag("tx_hash", transfer.tx_hash) \
                     .tag("token_address", transfer.token_address) \
@@ -260,8 +275,8 @@ class TokenAnalytics:
                     .tag("to_address", transfer.to_address) \
                     .field("block_number", transfer.block_number) \
                     .field("log_index", transfer.log_index) \
-                    .field("value", transfer.value or 0) \
-                    .field("token_id", transfer.token_id or 0) \
+                    .field("value", value_field) \
+                    .field("token_id", token_id_field) \
                     .time(transfer.block_timestamp)
                 points.append(point)
                 

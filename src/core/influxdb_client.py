@@ -244,6 +244,43 @@ class BlockchainInfluxDB:
         except Exception as e:
             logger.error(f"Error writing batch data: {e}")
     
+    def write_points(self, points: List[Dict[str, Any]]):
+        """Write multiple points from dictionary format for analytics modules."""
+        try:
+            influx_points = []
+            for point_data in points:
+                point = Point(point_data["measurement"])
+                
+                # Add tags
+                if "tags" in point_data:
+                    for tag_key, tag_value in point_data["tags"].items():
+                        if tag_value is not None:
+                            point = point.tag(tag_key, str(tag_value))
+                
+                # Add fields (handle large integers by converting to strings)
+                if "fields" in point_data:
+                    for field_key, field_value in point_data["fields"].items():
+                        if field_value is not None:
+                            # Handle large integers that exceed InfluxDB's range
+                            if isinstance(field_value, int) and (field_value > 9223372036854775807 or field_value < -9223372036854775808):
+                                # Convert large integers to strings to avoid overflow
+                                point = point.field(field_key, str(field_value))
+                            else:
+                                point = point.field(field_key, field_value)
+                
+                # Add timestamp
+                if "time" in point_data:
+                    point = point.time(point_data["time"], WritePrecision.NS)
+                else:
+                    point = point.time(datetime.utcnow(), WritePrecision.NS)
+                
+                influx_points.append(point)
+            
+            self.write_api.write(bucket=self.bucket, org=self.org, record=influx_points)
+            
+        except Exception as e:
+            logger.error(f"Error writing points: {e}")
+    
     def query_latest_block(self) -> Optional[int]:
         """Get the latest block number stored in InfluxDB."""
         try:
