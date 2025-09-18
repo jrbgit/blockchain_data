@@ -252,20 +252,14 @@ class TokenAnalytics:
         try:
             points = []
             for transfer in transfers:
-                # Handle large token values by converting to strings if needed
+                # Always convert token values to strings to maintain InfluxDB field type consistency
+                # This prevents "field type conflict" errors when mixing int and string values
                 value = transfer.value or 0
                 token_id = transfer.token_id or 0
                 
-                # Convert large integers to strings to avoid InfluxDB overflow
-                if isinstance(value, int) and (value > 9223372036854775807 or value < -9223372036854775808):
-                    value_field = str(value)
-                else:
-                    value_field = value
-                    
-                if isinstance(token_id, int) and (token_id > 9223372036854775807 or token_id < -9223372036854775808):
-                    token_id_field = str(token_id)
-                else:
-                    token_id_field = token_id
+                # Always store as strings to ensure consistent field types in InfluxDB
+                value_field = str(value)
+                token_id_field = str(token_id)
                 
                 point = Point("token_transfers") \
                     .tag("tx_hash", transfer.tx_hash) \

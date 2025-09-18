@@ -257,12 +257,16 @@ class BlockchainInfluxDB:
                         if tag_value is not None:
                             point = point.tag(tag_key, str(tag_value))
                 
-                # Add fields (handle large integers by converting to strings)
+                # Add fields (handle field type consistency)
                 if "fields" in point_data:
                     for field_key, field_value in point_data["fields"].items():
                         if field_value is not None:
-                            # Handle large integers that exceed InfluxDB's range
-                            if isinstance(field_value, int) and (field_value > 9223372036854775807 or field_value < -9223372036854775808):
+                            # For token_transfers measurement, ensure value and token_id are always strings
+                            # to prevent InfluxDB field type conflicts
+                            if point_data.get("measurement") == "token_transfers" and field_key in ["value", "token_id"]:
+                                point = point.field(field_key, str(field_value))
+                            # Handle large integers that exceed InfluxDB's range for other fields
+                            elif isinstance(field_value, int) and (field_value > 9223372036854775807 or field_value < -9223372036854775808):
                                 # Convert large integers to strings to avoid overflow
                                 point = point.field(field_key, str(field_value))
                             else:
