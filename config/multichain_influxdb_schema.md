@@ -225,27 +225,113 @@ chains:
 
 ### Single Chain Query
 ```flux
+// Get latest blocks for Ethereum only
 from(bucket: "blockchain_data")
   |> range(start: -24h)
   |> filter(fn: (r) => r["_measurement"] == "blocks")
   |> filter(fn: (r) => r["chain_id"] == "1")  // Ethereum only
+  |> sort(columns: ["_time"], desc: true)
+  |> limit(n: 100)
 ```
 
 ### Multi-Chain Comparison
 ```flux
+// Compare transaction volume across all chains
 from(bucket: "blockchain_data")
   |> range(start: -24h)
   |> filter(fn: (r) => r["_measurement"] == "network_metrics")
   |> filter(fn: (r) => r["_field"] == "total_transactions")
   |> group(columns: ["chain_name"])
+  |> aggregateWindow(every: 1h, fn: sum, createEmpty: false)
 ```
 
 ### Cross-Chain Bridge Activity
 ```flux
+// Monitor Ethereum to Polygon bridge activity
 from(bucket: "blockchain_data")
   |> range(start: -7d)
   |> filter(fn: (r) => r["_measurement"] == "bridge_events")
   |> filter(fn: (r) => r["source_chain_id"] == "1" and r["dest_chain_id"] == "137")
+  |> filter(fn: (r) => r["_field"] == "amount")
+  |> sum()
+```
+
+### Advanced Query Examples
+
+#### Gas Price Analysis Across Chains
+```flux
+// Compare average gas prices across EVM chains
+from(bucket: "blockchain_data")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r["_measurement"] == "transactions")
+  |> filter(fn: (r) => r["_field"] == "gas_price")
+  |> filter(fn: (r) => r["chain_id"] == "1" or r["chain_id"] == "137" or r["chain_id"] == "8453")
+  |> group(columns: ["chain_name"])
+  |> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
+  |> yield(name: "avg_gas_price")
+```
+
+#### Top Active Contracts Per Chain
+```flux
+// Find most active contracts on each chain
+from(bucket: "blockchain_data")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r["_measurement"] == "events")
+  |> group(columns: ["chain_name", "contract_address"])
+  |> count(column: "_value")
+  |> group(columns: ["chain_name"])
+  |> top(n: 10, columns: ["_value"])
+```
+
+#### DEX Volume Comparison
+```flux
+// Compare DEX trading volumes across chains
+from(bucket: "blockchain_data")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r["_measurement"] == "dex_swaps")
+  |> filter(fn: (r) => r["_field"] == "usd_value")
+  |> group(columns: ["chain_name", "dex_name"])
+  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false)
+  |> pivot(rowKey:["_time"], columnKey: ["chain_name"], valueColumn: "_value")
+```
+
+#### Chain Performance Metrics
+```flux
+// Real-time chain performance dashboard
+from(bucket: "blockchain_data")
+  |> range(start: -1h)
+  |> filter(fn: (r) => r["_measurement"] == "blocks")
+  |> filter(fn: (r) => r["_field"] == "block_time" or r["_field"] == "gas_utilization")
+  |> group(columns: ["chain_name", "_field"])
+  |> aggregateWindow(every: 5m, fn: mean, createEmpty: false)
+  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+```
+
+#### Multi-Chain Token Transfer Analysis
+```flux
+// Analyze USDC transfers across all chains
+from(bucket: "blockchain_data")
+  |> range(start: -24h)
+  |> filter(fn: (r) => r["_measurement"] == "token_transfers")
+  |> filter(fn: (r) => r["token_symbol"] == "USDC")
+  |> filter(fn: (r) => r["_field"] == "amount")
+  |> group(columns: ["chain_name"])
+  |> sum()
+  |> sort(columns: ["_value"], desc: true)
+```
+
+#### Cross-Chain Address Activity
+```flux
+// Track address activity across multiple chains
+address = "0x742d35Cc1cCf..."  // Example address
+
+from(bucket: "blockchain_data")
+  |> range(start: -30d)
+  |> filter(fn: (r) => r["_measurement"] == "transactions")
+  |> filter(fn: (r) => r["from_address"] == address or r["to_address"] == address)
+  |> group(columns: ["chain_name"])
+  |> count(column: "hash")
+  |> yield(name: "transactions_per_chain")
 ```
 
 ## Performance Considerations
