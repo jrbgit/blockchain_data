@@ -249,6 +249,16 @@ activity_df = db.query_address_activity("0x123...", days=7)
 - Processing lag detection
 - Error rate monitoring
 
+## 📚 Documentation
+
+This project includes comprehensive documentation:
+
+- **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Complete documentation navigation guide
+- **[PROJECT_STATUS_REPORT.md](PROJECT_STATUS_REPORT.md)** - Current project status and analysis
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guidelines
+- **[docs/ANALYTICS.md](docs/ANALYTICS.md)** - Detailed analytics modules documentation
+- **[docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** - Project architecture guide
+
 ## 🤝 Contributing
 
 This system is designed for extensibility. Key areas for contribution:
@@ -257,6 +267,8 @@ This system is designed for extensibility. Key areas for contribution:
 2. **Dashboard Components** - Create visualizations for new metrics
 3. **Performance Optimizations** - Improve processing speed and efficiency
 4. **Data Quality** - Add validation and monitoring features
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 
 ## 📞 Support & Troubleshooting
 
