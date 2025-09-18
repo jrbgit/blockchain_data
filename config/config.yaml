@@ -1,11 +1,73 @@
-# GraphLinq Chain Analytics Configuration
+# Multi-Chain Blockchain Analytics Configuration
 
-# Blockchain Connection
+# Multi-Chain Configuration
+chains:
+  # GraphLinq Chain (Local)
+  glq:
+    name: "GraphLinq Chain"
+    chain_id: 614
+    rpc_url: "http://localhost:8545"
+    ws_url: "ws://localhost:8545"
+    network_type: "mainnet"
+    provider: "local"
+    enabled: true
+    
+  # Ethereum Mainnet (Infura)
+  ethereum:
+    name: "Ethereum Mainnet"
+    chain_id: 1
+    rpc_url: "https://mainnet.infura.io/v3/{INFURA_PROJECT_ID}"
+    ws_url: "wss://mainnet.infura.io/ws/v3/{INFURA_PROJECT_ID}"
+    network_type: "mainnet"
+    provider: "infura"
+    enabled: true
+    
+  # Polygon Mainnet (Infura)
+  polygon:
+    name: "Polygon Mainnet"
+    chain_id: 137
+    rpc_url: "https://polygon-mainnet.infura.io/v3/{INFURA_PROJECT_ID}"
+    ws_url: "wss://polygon-mainnet.infura.io/ws/v3/{INFURA_PROJECT_ID}"
+    network_type: "mainnet"
+    provider: "infura"
+    enabled: true
+    
+  # Base Mainnet (Infura)
+  base:
+    name: "Base Mainnet"
+    chain_id: 8453
+    rpc_url: "https://base-mainnet.infura.io/v3/{INFURA_PROJECT_ID}"
+    ws_url: "wss://base-mainnet.infura.io/ws/v3/{INFURA_PROJECT_ID}"
+    network_type: "mainnet"
+    provider: "infura"
+    enabled: true
+    
+  # Avalanche C-Chain Mainnet (Infura)
+  avalanche:
+    name: "Avalanche C-Chain"
+    chain_id: 43114
+    rpc_url: "https://avalanche-mainnet.infura.io/v3/{INFURA_PROJECT_ID}"
+    ws_url: "wss://avalanche-mainnet.infura.io/ws/v3/{INFURA_PROJECT_ID}"
+    network_type: "mainnet"
+    provider: "infura"
+    enabled: true
+    
+  # BSC Mainnet (Infura)
+  bsc:
+    name: "BNB Smart Chain"
+    chain_id: 56
+    rpc_url: "https://bsc-mainnet.infura.io/v3/{INFURA_PROJECT_ID}"
+    ws_url: "wss://bsc-mainnet.infura.io/ws/v3/{INFURA_PROJECT_ID}"
+    network_type: "mainnet"
+    provider: "infura"
+    enabled: true
+
+# Legacy blockchain config (for backwards compatibility)
 blockchain:
   name: "GraphLinq Chain"
-  chain_id: 614  # 0x266 (actual detected: 614)
+  chain_id: 614
   rpc_url: "http://localhost:8545"
-  ws_url: "ws://localhost:8545"  # if WebSocket is available
+  ws_url: "ws://localhost:8545"
   network_type: "mainnet"
   
 # InfluxDB Configuration

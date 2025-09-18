@@ -47,9 +47,15 @@ class Config:
             
     def _validate_config(self):
         """Validate configuration and apply environment variable overrides."""
-        # Blockchain configuration
+        # Multi-chain configuration (new)
+        if 'chains' in self._config:
+            self._process_multichain_config()
+        
+        # Blockchain configuration (legacy support)
         if 'blockchain' not in self._config:
-            raise ValueError("Missing 'blockchain' configuration section")
+            # If no legacy blockchain config and no chains config, that's an error
+            if 'chains' not in self._config:
+                raise ValueError("Missing 'blockchain' or 'chains' configuration section")
             
         # InfluxDB configuration
         if 'influxdb' not in self._config:
@@ -79,7 +85,36 @@ class Config:
         if debug_mode == 'true':
             self._config['logging']['level'] = 'DEBUG'
     
-    # Blockchain configuration properties
+    def _process_multichain_config(self):
+        """Process multi-chain configuration with environment variable substitution."""
+        chains = self._config.get('chains', {})
+        infura_project_id = os.getenv('INFURA_PROJECT_ID')
+        
+        # Substitute environment variables in chain configurations
+        for chain_id, chain_config in chains.items():
+            if 'rpc_url' in chain_config and '{INFURA_PROJECT_ID}' in chain_config['rpc_url']:
+                if infura_project_id:
+                    chain_config['rpc_url'] = chain_config['rpc_url'].format(INFURA_PROJECT_ID=infura_project_id)
+                else:
+                    logger.warning(f"INFURA_PROJECT_ID not set, chain {chain_id} RPC URL will not work")
+            
+            if 'ws_url' in chain_config and '{INFURA_PROJECT_ID}' in chain_config['ws_url']:
+                if infura_project_id:
+                    chain_config['ws_url'] = chain_config['ws_url'].format(INFURA_PROJECT_ID=infura_project_id)
+                else:
+                    logger.warning(f"INFURA_PROJECT_ID not set, chain {chain_id} WebSocket URL will not work")
+        
+        # Update the chains configuration
+        self._config['chains'] = chains
+        logger.debug(f"Processed configuration for {len(chains)} chains")
+    
+    # Multi-chain configuration properties
+    @property
+    def chains(self) -> Dict[str, Dict[str, Any]]:
+        """Get multi-chain configuration."""
+        return self._config.get('chains', {})
+    
+    # Blockchain configuration properties (legacy)
     @property
     def blockchain_rpc_url(self) -> str:
         return self._config['blockchain']['rpc_url']
