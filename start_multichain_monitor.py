@@ -27,6 +27,7 @@ from rich.panel import Panel
 from rich.text import Text
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 def setup_logging(verbose: bool = False):
     """Setup logging configuration"""
@@ -151,7 +152,14 @@ Examples:
     finally:
         # Ensure proper cleanup
         console.print("\n🧹 Cleaning up connections...")
-        await asyncio.sleep(0.1)  # Allow pending tasks to complete
+        
+        # Allow time for graceful shutdown
+        try:
+            await asyncio.sleep(0.2)  # Give tasks time to complete gracefully
+        except asyncio.CancelledError:
+            pass  # Ignore cancellation during cleanup
+        
+        await asyncio.sleep(0.1)  # Allow final cleanup
     
     return 0
 

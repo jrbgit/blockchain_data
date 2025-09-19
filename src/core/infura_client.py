@@ -153,76 +153,85 @@ class InfuraClient:
             raise RuntimeError("Client not connected. Use 'async with InfuraClient()' or call connect()")
         
         for attempt in range(max_retries + 1):
-            # Rate limiting
-            async with self.throttler:
-                session = self.sessions[chain_id]
-                url = self._get_rpc_url(chain_id)
-                
-                payload = {
-                    "jsonrpc": "2.0",
-                    "method": method,
-                    "params": params or [],
-                    "id": 1
-                }
-                
-                try:
-                    async with session.post(url, json=payload) as response:
-                        response_data = await response.json()
-                        
-                        # Handle rate limiting with exponential backoff
-                        if response.status == 429:
-                            if attempt < max_retries:
-                                wait_time = (2 ** attempt) + (attempt * 0.1)  # Exponential backoff
-                                logger.warning(f"Rate limited for {chain_id}, retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
-                                await asyncio.sleep(wait_time)
-                                continue
-                            else:
-                                logger.error(f"Rate limit exceeded for {chain_id} after {max_retries} retries")
+            # Rate limiting with cancellation handling
+            try:
+                async with self.throttler:
+                    session = self.sessions[chain_id]
+                    url = self._get_rpc_url(chain_id)
+                    
+                    payload = {
+                        "jsonrpc": "2.0",
+                        "method": method,
+                        "params": params or [],
+                        "id": 1
+                    }
+                    
+                    try:
+                        async with session.post(url, json=payload) as response:
+                            response_data = await response.json()
+                            
+                            # Handle rate limiting with exponential backoff
+                            if response.status == 429:
+                                if attempt < max_retries:
+                                    wait_time = (2 ** attempt) + (attempt * 0.1)  # Exponential backoff
+                                    logger.warning(f"Rate limited for {chain_id}, retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                                    await asyncio.sleep(wait_time)
+                                    continue
+                                else:
+                                    logger.error(f"Rate limit exceeded for {chain_id} after {max_retries} retries")
+                                    raise aiohttp.ClientResponseError(
+                                        request_info=response.request_info,
+                                        history=response.history,
+                                        status=response.status
+                                    )
+                            
+                            if response.status != 200:
+                                logger.error(f"HTTP error {response.status} for {chain_id}: {response_data}")
                                 raise aiohttp.ClientResponseError(
                                     request_info=response.request_info,
                                     history=response.history,
                                     status=response.status
                                 )
-                        
-                        if response.status != 200:
-                            logger.error(f"HTTP error {response.status} for {chain_id}: {response_data}")
-                            raise aiohttp.ClientResponseError(
-                                request_info=response.request_info,
-                                history=response.history,
-                                status=response.status
-                            )
-                        
-                        if 'error' in response_data:
-                            error_info = response_data['error']
-                            # Check for rate limiting in error response
-                            if isinstance(error_info, dict) and error_info.get('code') == -32005:
-                                if attempt < max_retries:
-                                    wait_time = (2 ** attempt) + (attempt * 0.1)
-                                    logger.warning(f"Rate limited via RPC error for {chain_id}, retrying in {wait_time:.1f}s")
-                                    await asyncio.sleep(wait_time)
-                                    continue
                             
-                            logger.error(f"RPC error for {chain_id}: {error_info}")
-                            raise Exception(f"RPC Error: {error_info}")
-                        
-                        return response_data.get('result')
-                        
-                except asyncio.TimeoutError:
-                    if attempt < max_retries:
-                        wait_time = (2 ** attempt)
-                        logger.warning(f"Timeout for {chain_id} request: {method}, retrying in {wait_time}s")
-                        await asyncio.sleep(wait_time)
-                        continue
-                    logger.error(f"Timeout for {chain_id} request: {method} after {max_retries} retries")
-                    raise
-                except Exception as e:
-                    if attempt < max_retries and ("429" in str(e) or "Too Many Requests" in str(e)):
-                        wait_time = (2 ** attempt) + (attempt * 0.1)
-                        logger.warning(f"Request failed for {chain_id}, retrying in {wait_time:.1f}s: {str(e)}")
-                        await asyncio.sleep(wait_time)
-                        continue
-                    logger.error(f"Request failed for {chain_id}: {str(e)}")
-                    raise
+                            if 'error' in response_data:
+                                error_info = response_data['error']
+                                # Check for rate limiting in error response
+                                if isinstance(error_info, dict) and error_info.get('code') == -32005:
+                                    if attempt < max_retries:
+                                        wait_time = (2 ** attempt) + (attempt * 0.1)
+                                        logger.warning(f"Rate limited via RPC error for {chain_id}, retrying in {wait_time:.1f}s")
+                                        await asyncio.sleep(wait_time)
+                                        continue
+                                
+                                logger.error(f"RPC error for {chain_id}: {error_info}")
+                                raise Exception(f"RPC Error: {error_info}")
+                            
+                            return response_data.get('result')
+                            
+                    except asyncio.TimeoutError:
+                        if attempt < max_retries:
+                            wait_time = (2 ** attempt)
+                            logger.warning(f"Timeout for {chain_id} request: {method}, retrying in {wait_time}s")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        logger.error(f"Timeout for {chain_id} request: {method} after {max_retries} retries")
+                        raise
+                    except Exception as e:
+                        if attempt < max_retries and ("429" in str(e) or "Too Many Requests" in str(e)):
+                            wait_time = (2 ** attempt) + (attempt * 0.1)
+                            logger.warning(f"Request failed for {chain_id}, retrying in {wait_time:.1f}s: {str(e)}")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        logger.error(f"Request failed for {chain_id}: {str(e)}")
+                        raise
+            
+            except asyncio.CancelledError:
+                # Handle task cancellation gracefully during shutdown
+                logger.debug(f"Request cancelled for {chain_id}: {method}")
+                raise
+            except Exception as throttle_error:
+                logger.error(f"Throttler error for {chain_id}: {throttle_error}")
+                raise
     
     async def get_latest_block_number(self, chain_id: str) -> int:
         """Get the latest block number for a chain"""
@@ -267,50 +276,59 @@ class InfuraClient:
         if chain_id not in self.sessions:
             raise RuntimeError("Client not connected")
         
-        # Rate limiting for batch requests
-        async with self.throttler:
-            session = self.sessions[chain_id]
-            url = self._get_rpc_url(chain_id)
-            
-            # Prepare batch payload
-            batch_payload = []
-            for i, req in enumerate(requests):
-                payload = {
-                    "jsonrpc": "2.0",
-                    "method": req["method"],
-                    "params": req.get("params", []),
-                    "id": i + 1
-                }
-                batch_payload.append(payload)
-            
-            try:
-                async with session.post(url, json=batch_payload) as response:
-                    response_data = await response.json()
-                    
-                    if response.status != 200:
-                        logger.error(f"Batch HTTP error {response.status} for {chain_id}")
-                        raise aiohttp.ClientResponseError(
-                            request_info=response.request_info,
-                            history=response.history,
-                            status=response.status
-                        )
-                    
-                    # Sort responses by ID to maintain order
-                    responses = sorted(response_data, key=lambda x: x.get('id', 0))
-                    results = []
-                    
-                    for resp in responses:
-                        if 'error' in resp:
-                            logger.warning(f"Batch RPC error for {chain_id}: {resp['error']}")
-                            results.append(None)  # or raise exception based on requirements
-                        else:
-                            results.append(resp.get('result'))
-                    
-                    return results
-                    
-            except Exception as e:
-                logger.error(f"Batch request failed for {chain_id}: {str(e)}")
-                raise
+        # Rate limiting for batch requests with cancellation handling
+        try:
+            async with self.throttler:
+                session = self.sessions[chain_id]
+                url = self._get_rpc_url(chain_id)
+                
+                # Prepare batch payload
+                batch_payload = []
+                for i, req in enumerate(requests):
+                    payload = {
+                        "jsonrpc": "2.0",
+                        "method": req["method"],
+                        "params": req.get("params", []),
+                        "id": i + 1
+                    }
+                    batch_payload.append(payload)
+                
+                try:
+                    async with session.post(url, json=batch_payload) as response:
+                        response_data = await response.json()
+                        
+                        if response.status != 200:
+                            logger.error(f"Batch HTTP error {response.status} for {chain_id}")
+                            raise aiohttp.ClientResponseError(
+                                request_info=response.request_info,
+                                history=response.history,
+                                status=response.status
+                            )
+                        
+                        # Sort responses by ID to maintain order
+                        responses = sorted(response_data, key=lambda x: x.get('id', 0))
+                        results = []
+                        
+                        for resp in responses:
+                            if 'error' in resp:
+                                logger.warning(f"Batch RPC error for {chain_id}: {resp['error']}")
+                                results.append(None)  # or raise exception based on requirements
+                            else:
+                                results.append(resp.get('result'))
+                        
+                        return results
+                        
+                except Exception as e:
+                    logger.error(f"Batch request failed for {chain_id}: {str(e)}")
+                    raise
+        
+        except asyncio.CancelledError:
+            # Handle task cancellation gracefully during shutdown
+            logger.debug(f"Batch request cancelled for {chain_id}")
+            raise
+        except Exception as throttle_error:
+            logger.error(f"Batch throttler error for {chain_id}: {throttle_error}")
+            raise
     
     async def connect_websocket(self, chain_id: str) -> aiohttp.ClientWebSocketResponse:
         """

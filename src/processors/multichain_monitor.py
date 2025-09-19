@@ -229,6 +229,8 @@ class MultiChainMonitor:
                     
             except KeyboardInterrupt:
                 logger.info("Received shutdown signal...")
+            except asyncio.CancelledError:
+                logger.info("Monitoring tasks cancelled, shutting down gracefully...")
             except Exception as e:
                 logger.error(f"Monitoring error: {e}")
             finally:
@@ -251,6 +253,10 @@ class MultiChainMonitor:
             for chain_id, task in tasks:
                 try:
                     await task
+                except asyncio.CancelledError:
+                    logger.debug(f"Task cancelled for {chain_id}")
+                    # Re-raise cancellation to stop monitoring gracefully
+                    raise
                 except Exception as e:
                     logger.error(f"Error updating {chain_id}: {e}")
                     self.chain_states[chain_id]['errors'] += 1
