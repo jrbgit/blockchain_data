@@ -26,7 +26,16 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from ..core.config import Config
 from ..core.multichain_client import MultiChainClient
 from ..core.multichain_influxdb_client import MultiChainInfluxDB
-from ..analytics.chain_analytics import MultiChainAnalyticsOrchestrator, CrossChainMetrics
+
+# Optional analytics import
+try:
+    from ..analytics.chain_analytics import MultiChainAnalyticsOrchestrator, CrossChainMetrics
+    ANALYTICS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Analytics module not available: {e}")
+    MultiChainAnalyticsOrchestrator = None
+    CrossChainMetrics = None
+    ANALYTICS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +53,13 @@ class MultiChainMonitor:
         self.analytics: Optional[MultiChainAnalyticsOrchestrator] = None
         
         # Monitoring configuration
-        self.poll_interval = config.get('monitoring.poll_interval', 3)
+        try:
+            self.poll_interval = config.get('monitoring.poll_interval', 3)
+        except (AttributeError, KeyError):
+            # Fallback if monitoring config doesn't exist
+            self.poll_interval = getattr(config, 'poll_interval', 3)
+            if hasattr(config, 'monitoring') and isinstance(config.monitoring, dict):
+                self.poll_interval = config.monitoring.get('poll_interval', self.poll_interval)
         self.selected_chains: Set[str] = set()
         self.display_mode = "overview"  # overview, detailed, analytics, comparison
         
@@ -82,9 +97,13 @@ class MultiChainMonitor:
             self.db_client = MultiChainInfluxDB(self.config)
             await self.db_client.connect()
             
-            # Initialize analytics
-            self.analytics = MultiChainAnalyticsOrchestrator(self.config)
-            await self.analytics.initialize()
+            # Initialize analytics (if available)
+            if ANALYTICS_AVAILABLE and MultiChainAnalyticsOrchestrator:
+                self.analytics = MultiChainAnalyticsOrchestrator(self.config)
+                await self.analytics.initialize()
+            else:
+                self.analytics = None
+                logger.info("Analytics module not available, continuing without analytics")
             
             # Get connected chains
             connected_chains = self.multichain_client.get_connected_chains()

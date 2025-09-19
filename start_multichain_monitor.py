@@ -108,7 +108,9 @@ Examples:
     try:
         config = Config()
         if args.interval:
-            config.monitoring = config.monitoring or {}
+            # Set monitoring configuration using the get method
+            if not hasattr(config, 'monitoring'):
+                config.monitoring = {}
             config.monitoring['poll_interval'] = args.interval
             
     except Exception as e:

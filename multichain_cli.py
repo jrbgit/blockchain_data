@@ -102,10 +102,13 @@ async def cmd_test_connections():
         table.add_column("Latest Block", justify="right", width=15)
         table.add_column("Chain ID", justify="right", width=10)
         
+        # Get chain info for all chains
+        chain_infos = await multichain_client.get_chain_info_all()
+        
         for chain_id in connected_chains:
             try:
                 latest_block = await multichain_client.get_latest_block_number(chain_id)
-                chain_info = await multichain_client.get_chain_info(chain_id)
+                chain_info = chain_infos.get(chain_id, {})
                 
                 chain_name = config.chains[chain_id]['name']
                 status = "[green]●[/green] Connected"

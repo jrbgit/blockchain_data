@@ -1,3 +1,3 @@
 @echo off
 REM Multi-Chain CLI Windows Batch File
-python "%~dp0src\cli\multichain_cli.py" %*
+python "%~dp0multichain_cli.py" %*
