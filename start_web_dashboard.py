@@ -9,6 +9,7 @@ import sys
 import signal
 import logging
 from pathlib import Path
+import platform
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -21,6 +22,14 @@ from rich.text import Text
 
 console = Console()
 
+# Global shutdown event
+shutdown_event = asyncio.Event()
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals gracefully."""
+    console.print(f"\n⚠️ Received signal {signum}, initiating graceful shutdown...")
+    shutdown_event.set()
+
 async def main():
     """Start the web monitoring service."""
     console.print(Panel(
@@ -28,6 +37,15 @@ async def main():
         subtitle="Web interface for real-time monitoring",
         border_style="blue"
     ))
+    
+    # Setup signal handlers for graceful shutdown
+    if platform.system() != 'Windows':
+        # Unix-like systems
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+    else:
+        # Windows
+        signal.signal(signal.SIGINT, signal_handler)
     
     # Setup logging
     logging.basicConfig(
@@ -63,17 +81,34 @@ async def main():
         console.print("   • Analytics data updates automatically")
         console.print("   • Press Ctrl+C here to stop the web service")
         
-        # Keep running until interrupted
-        while True:
-            await asyncio.sleep(1)
+        # Keep running until shutdown is signaled
+        try:
+            await shutdown_event.wait()
+        except asyncio.CancelledError:
+            # This is expected when the task is cancelled during shutdown
+            pass
             
     except KeyboardInterrupt:
         console.print("\n⚠️ Shutting down web service...")
-        await service.shutdown()
-        console.print("✅ Web service stopped")
     except Exception as e:
         console.print(f"❌ Web service error: {e}")
-        await service.shutdown()
+    finally:
+        # Ensure clean shutdown regardless of how we exit
+        console.print("🛑 Initiating graceful shutdown...")
+        try:
+            await service.shutdown()
+            console.print("✅ Web service stopped gracefully")
+        except Exception as shutdown_error:
+            console.print(f"⚠️ Error during shutdown: {shutdown_error}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # This is handled in main(), but just in case
+        console.print("\n🔴 Application interrupted")
+    except Exception as e:
+        console.print(f"❌ Unexpected error: {e}")
+        sys.exit(1)
+    finally:
+        console.print("👋 Goodbye!")
