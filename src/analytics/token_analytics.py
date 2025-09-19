@@ -252,29 +252,31 @@ class TokenAnalytics:
         try:
             points = []
             for transfer in transfers:
-                # Always convert token values to strings to maintain InfluxDB field type consistency
-                # This prevents "field type conflict" errors when mixing int and string values
+                # Use dictionary format for write_points to leverage smart integer handling
                 value = transfer.value or 0
                 token_id = transfer.token_id or 0
                 
-                # Always store as strings to ensure consistent field types in InfluxDB
-                value_field = str(value)
-                token_id_field = str(token_id)
+                point_data = {
+                    "measurement": "token_transfers",
+                    "tags": {
+                        "tx_hash": transfer.tx_hash,
+                        "token_address": transfer.token_address,
+                        "token_type": transfer.token_type,
+                        "from_address": transfer.from_address,
+                        "to_address": transfer.to_address,
+                    },
+                    "fields": {
+                        "block_number": transfer.block_number,
+                        "log_index": transfer.log_index,
+                        "value": value,  # Smart handling: integer if fits, string if too large
+                        "token_id": token_id,  # Smart handling: integer if fits, string if too large
+                    },
+                    "time": transfer.block_timestamp
+                }
+                points.append(point_data)
                 
-                point = Point("token_transfers") \
-                    .tag("tx_hash", transfer.tx_hash) \
-                    .tag("token_address", transfer.token_address) \
-                    .tag("token_type", transfer.token_type) \
-                    .tag("from_address", transfer.from_address) \
-                    .tag("to_address", transfer.to_address) \
-                    .field("block_number", transfer.block_number) \
-                    .field("log_index", transfer.log_index) \
-                    .field("value", value_field) \
-                    .field("token_id", token_id_field) \
-                    .time(transfer.block_timestamp)
-                points.append(point)
-                
-            self.db_client.write_batch(points)
+            # Use write_points for smart large integer handling
+            self.db_client.write_points(points)
             logger.debug(f"Stored {len(transfers)} token transfers")
             
         except Exception as e:

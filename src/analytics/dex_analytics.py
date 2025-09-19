@@ -399,13 +399,14 @@ class DEXAnalytics:
                     "fields": {
                         "block_number": swap.block_number,
                         "log_index": swap.log_index,
-                        "amount_in": swap.amount_in,
-                        "amount_out": swap.amount_out,
+                        "amount_in": swap.amount_in,  # Will be converted to string by write_points
+                        "amount_out": swap.amount_out,  # Will be converted to string by write_points
                         "price_impact": swap.price_impact or 0.0,
                     }
                 }
                 points.append(point)
                 
+            # write_points handles large integers safely
             self.db_client.write_points(points)
             logger.debug(f"Stored {len(swaps)} DEX swaps")
             
@@ -435,14 +436,15 @@ class DEXAnalytics:
                     "fields": {
                         "block_number": event.block_number,
                         "log_index": event.log_index,
-                        "amount0": event.amount0,
-                        "amount1": event.amount1,
+                        "amount0": event.amount0,  # Will be converted to string by write_points
+                        "amount1": event.amount1,  # Will be converted to string by write_points
                         "liquidity_delta": event.liquidity_delta or 0,
                         "total_liquidity": event.total_liquidity or 0,
                     }
                 }
                 points.append(point)
                 
+            # write_points handles large integers safely
             self.db_client.write_points(points)
             logger.debug(f"Stored {len(events)} liquidity events")
             

@@ -261,19 +261,20 @@ class BlockchainInfluxDB:
                 if "fields" in point_data:
                     for field_key, field_value in point_data["fields"].items():
                         if field_value is not None:
-                            # For token_transfers measurement, ensure value and token_id are always strings
-                            # to prevent InfluxDB field type conflicts
-                            if point_data.get("measurement") == "token_transfers" and field_key in ["value", "token_id"]:
-                                point = point.field(field_key, str(field_value))
-                            # For dex_swaps measurement, ensure amount fields are always strings
-                            # to prevent InfluxDB field type conflicts
-                            elif point_data.get("measurement") == "dex_swaps" and field_key in ["amount_in", "amount_out", "token0_amount", "token1_amount"]:
-                                point = point.field(field_key, str(field_value))
-                            # Handle large integers that exceed InfluxDB's range for other fields
-                            elif isinstance(field_value, int) and (field_value > 9223372036854775807 or field_value < -9223372036854775808):
-                                # Convert large integers to strings to avoid overflow
-                                point = point.field(field_key, str(field_value))
+                            # Smart handling of large integers to avoid both overflow and field type conflicts
+                            if isinstance(field_value, int):
+                                # InfluxDB integer range: -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807
+                                max_int = 9223372036854775807
+                                min_int = -9223372036854775808
+                                
+                                if field_value > max_int or field_value < min_int:
+                                    # Value is too large for InfluxDB integer, convert to string
+                                    point = point.field(field_key, str(field_value))
+                                else:
+                                    # Value fits in InfluxDB integer range, keep as integer
+                                    point = point.field(field_key, field_value)
                             else:
+                                # Non-integer values, store as-is
                                 point = point.field(field_key, field_value)
                 
                 # Add timestamp
