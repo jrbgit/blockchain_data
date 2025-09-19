@@ -466,12 +466,12 @@ class MultiChainMonitor:
             
             # Create detailed info for each chain
             info_text = Text()
-            info_text.append(f"Latest Block: {state.get('latest_block', 0):,}\\n", style="white")
-            info_text.append(f"Processed: {state.get('blocks_processed', 0):,} blocks\\n", style="cyan")
-            info_text.append(f"Transactions: {state.get('transactions_processed', 0):,}\\n", style="green")
-            info_text.append(f"TPS: {state.get('tps', 0):.2f}\\n", style="yellow")
-            info_text.append(f"Block Time: {state.get('avg_block_time', 0):.2f}s\\n", style="blue")
-            info_text.append(f"Provider: {state.get('provider', 'unknown')}\\n", style="magenta")
+            info_text.append(f"Latest Block: {state.get('latest_block', 0):,}\n", style="white")
+            info_text.append(f"Processed: {state.get('blocks_processed', 0):,} blocks\n", style="cyan")
+            info_text.append(f"Transactions: {state.get('transactions_processed', 0):,}\n", style="green")
+            info_text.append(f"TPS: {state.get('tps', 0):.2f}\n", style="yellow")
+            info_text.append(f"Block Time: {state.get('avg_block_time', 0):.2f}s\n", style="blue")
+            info_text.append(f"Provider: {state.get('provider', 'unknown')}\n", style="magenta")
             info_text.append(f"Errors: {state.get('errors', 0)}", style="red")
             
             # Status color
@@ -504,34 +504,34 @@ class MultiChainMonitor:
         summary = market_overview.get('summary', {})
         
         content = Text()
-        content.append("🌐 Market Overview\\n\\n", style="bold blue")
+        content.append("🌐 Market Overview\n\n", style="bold blue")
         
-        content.append(f"Total Chains Monitored: {summary.get('total_chains_monitored', 0)}\\n", style="cyan")
-        content.append(f"Total Transactions (24h): {summary.get('total_transactions_24h', 0):,}\\n", style="green")
-        content.append(f"Total Active Addresses (24h): {summary.get('total_active_addresses_24h', 0):,}\\n", style="yellow")
-        content.append(f"Total DEX Volume (24h): ${summary.get('total_dex_volume_24h', 0):,.0f}\\n", style="magenta")
-        content.append(f"Cross-Chain Bridge Volume (24h): ${summary.get('cross_chain_bridge_volume_24h', 0):,.0f}\\n", style="blue")
+        content.append(f"Total Chains Monitored: {summary.get('total_chains_monitored', 0)}\n", style="cyan")
+        content.append(f"Total Transactions (24h): {summary.get('total_transactions_24h', 0):,}\n", style="green")
+        content.append(f"Total Active Addresses (24h): {summary.get('total_active_addresses_24h', 0):,}\n", style="yellow")
+        content.append(f"Total DEX Volume (24h): ${summary.get('total_dex_volume_24h', 0):,.0f}\n", style="magenta")
+        content.append(f"Cross-Chain Bridge Volume (24h): ${summary.get('cross_chain_bridge_volume_24h', 0):,.0f}\n", style="blue")
         
         # Chain rankings
         cross_chain_metrics = self.analytics_cache.get('cross_chain_metrics', {})
         rankings = cross_chain_metrics.get('chain_rankings', {})
         
         if rankings:
-            content.append("\\n🏆 Chain Rankings\\n\\n", style="bold yellow")
+            content.append("\n🏆 Chain Rankings\n\n", style="bold yellow")
             
             tx_rankings = rankings.get('transaction_volume', {})
             if tx_rankings:
-                content.append("Transaction Volume:\\n", style="bold")
+                content.append("Transaction Volume:\n", style="bold")
                 for chain_id, rank in sorted(tx_rankings.items(), key=lambda x: x[1]):
                     chain_name = self.chain_states.get(chain_id, {}).get('name', chain_id)
-                    content.append(f"  {rank}. {chain_name}\\n")
+                    content.append(f"  {rank}. {chain_name}\n")
             
             tps_rankings = rankings.get('tps', {})
             if tps_rankings:
-                content.append("\\nTPS Performance:\\n", style="bold")
+                content.append("\nTPS Performance:\n", style="bold")
                 for chain_id, rank in sorted(tps_rankings.items(), key=lambda x: x[1]):
                     chain_name = self.chain_states.get(chain_id, {}).get('name', chain_id)
-                    content.append(f"  {rank}. {chain_name}\\n")
+                    content.append(f"  {rank}. {chain_name}\n")
         
         return Panel(
             content,
