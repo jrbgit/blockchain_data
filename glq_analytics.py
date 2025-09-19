@@ -25,10 +25,12 @@ async def run_multichain_sync(chains: Optional[List[str]] = None, max_blocks: Op
         config = Config()
         print(f"Starting multi-chain historical sync for {len(config.chains)} configured chains...")
         
-        success = await MultiChainProcessor(config).process_historical_data(
-            chains=chains,
-            max_blocks=max_blocks
-        )
+        # Use context manager to ensure proper connection and cleanup
+        async with MultiChainProcessor(config) as processor:
+            success = await processor.process_historical_data(
+                chains=chains,
+                max_blocks=max_blocks
+            )
         
         if success:
             print("Multi-chain synchronization completed successfully!")
@@ -48,10 +50,12 @@ async def run_multichain_monitor(chains: Optional[List[str]] = None, interval: i
         config = Config()
         print(f"Starting multi-chain real-time monitoring...")
         
-        await MultiChainProcessor(config).process_realtime(
-            chains=chains,
-            polling_interval=interval
-        )
+        # Use context manager to ensure proper connection and cleanup
+        async with MultiChainProcessor(config) as processor:
+            await processor.process_realtime(
+                chains=chains,
+                polling_interval=interval
+            )
         
     except KeyboardInterrupt:
         print("\nMulti-chain monitoring stopped by user")
