@@ -265,6 +265,10 @@ class BlockchainInfluxDB:
                             # to prevent InfluxDB field type conflicts
                             if point_data.get("measurement") == "token_transfers" and field_key in ["value", "token_id"]:
                                 point = point.field(field_key, str(field_value))
+                            # For dex_swaps measurement, ensure amount fields are always strings
+                            # to prevent InfluxDB field type conflicts
+                            elif point_data.get("measurement") == "dex_swaps" and field_key in ["amount_in", "amount_out", "token0_amount", "token1_amount"]:
+                                point = point.field(field_key, str(field_value))
                             # Handle large integers that exceed InfluxDB's range for other fields
                             elif isinstance(field_value, int) and (field_value > 9223372036854775807 or field_value < -9223372036854775808):
                                 # Convert large integers to strings to avoid overflow
