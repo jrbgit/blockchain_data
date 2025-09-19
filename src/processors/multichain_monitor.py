@@ -106,20 +106,39 @@ class MultiChainMonitor:
                 logger.info("Analytics module not available, continuing without analytics")
             
             # Get connected chains
-            connected_chains = self.multichain_client.get_connected_chains()
+            all_connected_chains = self.multichain_client.get_connected_chains()
             
-            # Initialize chain states
-            for chain_id in connected_chains:
+            # Initialize chain states for all connected chains
+            for chain_id in all_connected_chains:
                 await self._initialize_chain_state(chain_id)
             
-            # Default to monitoring all connected chains
-            self.selected_chains = set(connected_chains)
+            # Filter out chains that had errors during initialization for rate limiting
+            available_chains = []
+            for chain_id in all_connected_chains:
+                state = self.chain_states.get(chain_id, {})
+                if state.get('status') not in ['error'] or state.get('provider') != 'infura':
+                    available_chains.append(chain_id)
+                else:
+                    logger.warning(f"Skipping {chain_id} due to initialization error (likely rate limited)")
             
-            logger.info(f"Multi-chain monitor initialized for {len(connected_chains)} chains")
+            # Default to monitoring available chains
+            self.selected_chains = set(available_chains)
+            
+            logger.info(f"Multi-chain monitor initialized for {len(available_chains)} chains")
             return True
             
         except Exception as e:
             logger.error(f"Failed to initialize multi-chain monitor: {e}")
+            # Clean up any connections that were established
+            try:
+                if self.multichain_client:
+                    await self.multichain_client.close()
+                if self.db_client:
+                    await self.db_client.close()
+                if self.analytics:
+                    await self.analytics.shutdown()
+            except Exception as cleanup_error:
+                logger.error(f"Error during cleanup: {cleanup_error}")
             return False
     
     async def _initialize_chain_state(self, chain_id: str):
@@ -127,13 +146,20 @@ class MultiChainMonitor:
         
         try:
             chain_config = self.multichain_client.get_chain_config(chain_id)
-            latest_block = await self.multichain_client.get_latest_block_number(chain_id)
+            
+            # Safely get latest block with error handling
+            latest_block = None
+            try:
+                latest_block = await self.multichain_client.get_latest_block_number(chain_id)
+            except Exception as block_error:
+                logger.warning(f"Failed to get latest block for {chain_id}: {block_error}")
+                latest_block = None
             
             self.chain_states[chain_id] = {
                 'name': chain_config['name'],
                 'enabled': chain_config.get('enabled', False),
                 'provider': chain_config.get('provider', 'unknown'),
-                'latest_block': latest_block or 0,
+                'latest_block': latest_block if latest_block is not None else 0,
                 'last_processed_block': 0,
                 'blocks_processed': 0,
                 'transactions_processed': 0,
@@ -142,7 +168,7 @@ class MultiChainMonitor:
                 'avg_block_time': 0.0,
                 'tps': 0.0,
                 'gas_utilization': 0.0,
-                'status': 'connected' if latest_block else 'disconnected',
+                'status': 'connected' if latest_block is not None and latest_block > 0 else 'disconnected',
                 'last_update': datetime.now(),
                 'processing_lag': 0
             }
@@ -154,7 +180,20 @@ class MultiChainMonitor:
             self.chain_states[chain_id] = {
                 'name': chain_id,
                 'status': 'error',
-                'error': str(e)
+                'error': str(e),
+                'enabled': False,
+                'provider': 'unknown',
+                'latest_block': 0,
+                'last_processed_block': 0,
+                'blocks_processed': 0,
+                'transactions_processed': 0,
+                'events_processed': 0,
+                'errors': 1,
+                'avg_block_time': 0.0,
+                'tps': 0.0,
+                'gas_utilization': 0.0,
+                'last_update': datetime.now(),
+                'processing_lag': 0
             }
     
     async def start_monitoring(self, selected_chains: Optional[List[str]] = None):
@@ -238,9 +277,17 @@ class MultiChainMonitor:
         try:
             state = self.chain_states[chain_id]
             
-            # Get latest block
-            latest_block = await self.multichain_client.get_latest_block_number(chain_id)
-            if latest_block:
+            # Safely get latest block
+            latest_block = None
+            try:
+                latest_block = await self.multichain_client.get_latest_block_number(chain_id)
+            except Exception as block_error:
+                logger.warning(f"Failed to get latest block for {chain_id}: {block_error}")
+                state['status'] = 'error'
+                state['errors'] += 1
+                return
+            
+            if latest_block is not None and latest_block > 0:
                 # Calculate processing lag
                 state['processing_lag'] = latest_block - state.get('last_processed_block', 0)
                 
@@ -532,15 +579,24 @@ class MultiChainMonitor:
         logger.info("Stopping multi-chain monitor...")
         self.running = False
         
-        # Close connections
-        if self.multichain_client:
-            await self.multichain_client.close()
+        # Close connections with proper None checks
+        try:
+            if self.multichain_client is not None:
+                await self.multichain_client.close()
+        except Exception as e:
+            logger.error(f"Error closing multichain client: {e}")
         
-        if self.db_client:
-            await self.db_client.close()
+        try:
+            if self.db_client is not None:
+                await self.db_client.close()
+        except Exception as e:
+            logger.error(f"Error closing database client: {e}")
         
-        if self.analytics:
-            await self.analytics.shutdown()
+        try:
+            if self.analytics is not None:
+                await self.analytics.shutdown()
+        except Exception as e:
+            logger.error(f"Error shutting down analytics: {e}")
         
         logger.info("Multi-chain monitor stopped")
     

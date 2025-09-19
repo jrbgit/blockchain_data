@@ -31,17 +31,23 @@ class InfuraClient:
             raise ValueError("INFURA_PROJECT_ID environment variable is required")
             
         # Rate limiting (Infura allows 100k requests/day, ~1.15 req/sec sustained)
-        self.throttler = Throttler(rate_limit=10, period=1.0)  # 10 req/sec burst
+        # Reduced rate limit to avoid 429 errors
+        self.throttler = Throttler(rate_limit=3, period=1.0)  # 3 req/sec to be conservative
         
         # Connection sessions per chain
         self.sessions: Dict[str, aiohttp.ClientSession] = {}
         self.ws_connections: Dict[str, aiohttp.ClientWebSocketResponse] = {}
+        self.connector: Optional[aiohttp.TCPConnector] = None
         
         # Chain configuration
         self.chains = self._get_enabled_chains()
         
         # Connection timeouts
         self.timeout = aiohttp.ClientTimeout(total=30, connect=10)
+        
+        # Rate limiting tracking
+        self.last_request_times = {}
+        self.retry_delays = {}
         
         logger.info(f"Initialized Infura client for {len(self.chains)} chains")
     
@@ -65,16 +71,17 @@ class InfuraClient:
     
     async def connect(self):
         """Initialize HTTP sessions for all chains"""
-        connector = aiohttp.TCPConnector(
+        # Create a single connector for all sessions
+        self.connector = aiohttp.TCPConnector(
             limit=50,  # Total connection pool size
-            limit_per_host=10,  # Per-host connection limit
+            limit_per_host=5,   # Reduced per-host limit to avoid rate limiting
             ttl_dns_cache=300,
             use_dns_cache=True,
         )
         
         for chain_id, chain_config in self.chains.items():
             session = aiohttp.ClientSession(
-                connector=connector,
+                connector=self.connector,
                 timeout=self.timeout,
                 headers={
                     'Content-Type': 'application/json',
@@ -88,15 +95,30 @@ class InfuraClient:
     async def close(self):
         """Close all connections"""
         # Close WebSocket connections
-        for chain_id, ws in self.ws_connections.items():
+        for chain_id, ws in list(self.ws_connections.items()):
             if not ws.closed:
-                await ws.close()
-                logger.debug(f"Closed WebSocket connection for {chain_id}")
+                try:
+                    await ws.close()
+                    logger.debug(f"Closed WebSocket connection for {chain_id}")
+                except Exception as e:
+                    logger.error(f"Error closing WebSocket for {chain_id}: {e}")
         
         # Close HTTP sessions
-        for chain_id, session in self.sessions.items():
-            await session.close()
-            logger.debug(f"Closed HTTP session for {chain_id}")
+        for chain_id, session in list(self.sessions.items()):
+            try:
+                if not session.closed:
+                    await session.close()
+                    logger.debug(f"Closed HTTP session for {chain_id}")
+            except Exception as e:
+                logger.error(f"Error closing session for {chain_id}: {e}")
+        
+        # Close the connector
+        if hasattr(self, 'connector') and self.connector:
+            try:
+                await self.connector.close()
+                logger.debug("Closed TCP connector")
+            except Exception as e:
+                logger.error(f"Error closing connector: {e}")
         
         self.sessions.clear()
         self.ws_connections.clear()
@@ -111,14 +133,15 @@ class InfuraClient:
         chain_config = self.chains[chain_id]
         return chain_config['ws_url'].format(INFURA_PROJECT_ID=self.project_id)
     
-    async def make_request(self, chain_id: str, method: str, params: List[Any] = None) -> Dict[str, Any]:
+    async def make_request(self, chain_id: str, method: str, params: List[Any] = None, max_retries: int = 3) -> Dict[str, Any]:
         """
-        Make a JSON-RPC request to a specific chain
+        Make a JSON-RPC request to a specific chain with exponential backoff
         
         Args:
             chain_id: Chain identifier (e.g., 'ethereum', 'polygon')
             method: JSON-RPC method name
             params: Method parameters
+            max_retries: Maximum number of retries for rate limited requests
             
         Returns:
             JSON-RPC response
@@ -129,42 +152,77 @@ class InfuraClient:
         if chain_id not in self.sessions:
             raise RuntimeError("Client not connected. Use 'async with InfuraClient()' or call connect()")
         
-        # Rate limiting
-        async with self.throttler:
-            session = self.sessions[chain_id]
-            url = self._get_rpc_url(chain_id)
-            
-            payload = {
-                "jsonrpc": "2.0",
-                "method": method,
-                "params": params or [],
-                "id": 1
-            }
-            
-            try:
-                async with session.post(url, json=payload) as response:
-                    response_data = await response.json()
-                    
-                    if response.status != 200:
-                        logger.error(f"HTTP error {response.status} for {chain_id}: {response_data}")
-                        raise aiohttp.ClientResponseError(
-                            request_info=response.request_info,
-                            history=response.history,
-                            status=response.status
-                        )
-                    
-                    if 'error' in response_data:
-                        logger.error(f"RPC error for {chain_id}: {response_data['error']}")
-                        raise Exception(f"RPC Error: {response_data['error']}")
-                    
-                    return response_data.get('result')
-                    
-            except asyncio.TimeoutError:
-                logger.error(f"Timeout for {chain_id} request: {method}")
-                raise
-            except Exception as e:
-                logger.error(f"Request failed for {chain_id}: {str(e)}")
-                raise
+        for attempt in range(max_retries + 1):
+            # Rate limiting
+            async with self.throttler:
+                session = self.sessions[chain_id]
+                url = self._get_rpc_url(chain_id)
+                
+                payload = {
+                    "jsonrpc": "2.0",
+                    "method": method,
+                    "params": params or [],
+                    "id": 1
+                }
+                
+                try:
+                    async with session.post(url, json=payload) as response:
+                        response_data = await response.json()
+                        
+                        # Handle rate limiting with exponential backoff
+                        if response.status == 429:
+                            if attempt < max_retries:
+                                wait_time = (2 ** attempt) + (attempt * 0.1)  # Exponential backoff
+                                logger.warning(f"Rate limited for {chain_id}, retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries + 1})")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            else:
+                                logger.error(f"Rate limit exceeded for {chain_id} after {max_retries} retries")
+                                raise aiohttp.ClientResponseError(
+                                    request_info=response.request_info,
+                                    history=response.history,
+                                    status=response.status
+                                )
+                        
+                        if response.status != 200:
+                            logger.error(f"HTTP error {response.status} for {chain_id}: {response_data}")
+                            raise aiohttp.ClientResponseError(
+                                request_info=response.request_info,
+                                history=response.history,
+                                status=response.status
+                            )
+                        
+                        if 'error' in response_data:
+                            error_info = response_data['error']
+                            # Check for rate limiting in error response
+                            if isinstance(error_info, dict) and error_info.get('code') == -32005:
+                                if attempt < max_retries:
+                                    wait_time = (2 ** attempt) + (attempt * 0.1)
+                                    logger.warning(f"Rate limited via RPC error for {chain_id}, retrying in {wait_time:.1f}s")
+                                    await asyncio.sleep(wait_time)
+                                    continue
+                            
+                            logger.error(f"RPC error for {chain_id}: {error_info}")
+                            raise Exception(f"RPC Error: {error_info}")
+                        
+                        return response_data.get('result')
+                        
+                except asyncio.TimeoutError:
+                    if attempt < max_retries:
+                        wait_time = (2 ** attempt)
+                        logger.warning(f"Timeout for {chain_id} request: {method}, retrying in {wait_time}s")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    logger.error(f"Timeout for {chain_id} request: {method} after {max_retries} retries")
+                    raise
+                except Exception as e:
+                    if attempt < max_retries and ("429" in str(e) or "Too Many Requests" in str(e)):
+                        wait_time = (2 ** attempt) + (attempt * 0.1)
+                        logger.warning(f"Request failed for {chain_id}, retrying in {wait_time:.1f}s: {str(e)}")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    logger.error(f"Request failed for {chain_id}: {str(e)}")
+                    raise
     
     async def get_latest_block_number(self, chain_id: str) -> int:
         """Get the latest block number for a chain"""

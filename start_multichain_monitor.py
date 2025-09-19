@@ -128,6 +128,7 @@ Examples:
     console.print()
     
     # Start appropriate monitoring mode
+    monitor = None
     try:
         if args.mode == "overview":
             await run_multichain_overview(config, args.chains)
@@ -147,6 +148,10 @@ Examples:
             import traceback
             console.print(traceback.format_exc())
         return 1
+    finally:
+        # Ensure proper cleanup
+        console.print("\n🧹 Cleaning up connections...")
+        await asyncio.sleep(0.1)  # Allow pending tasks to complete
     
     return 0
 
