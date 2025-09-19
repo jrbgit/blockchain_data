@@ -6,8 +6,13 @@ Shows current sync progress and estimated completion time
 
 import asyncio
 import sys
+import warnings
 from pathlib import Path
 from datetime import datetime, timedelta
+
+# Suppress InfluxDB pivot warning
+from influxdb_client.client.warnings import MissingPivotFunction
+warnings.simplefilter("ignore", MissingPivotFunction)
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -80,12 +85,22 @@ async def check_progress():
                                   r["_measurement"] == "dex_swaps" or 
                                   r["_measurement"] == "liquidity_events" or 
                                   r["_measurement"] == "defi_events")
+              |> group(columns: ["_measurement"])
               |> count()
             '''
             
             analytics_result = db_client.query_api.query_data_frame(org=config.influxdb_org, query=analytics_query)
             
-            if not analytics_result.empty and len(analytics_result) > 0:
+            # Handle case where result might be a list or empty
+            has_data = False
+            if isinstance(analytics_result, list):
+                has_data = len(analytics_result) > 0
+            elif hasattr(analytics_result, 'empty'):
+                has_data = not analytics_result.empty and len(analytics_result) > 0
+            else:
+                has_data = analytics_result is not None
+            
+            if has_data:
                 analytics_table = Table(title="📊 Analytics Progress")
                 analytics_table.add_column("Event Type", style="cyan")
                 analytics_table.add_column("Count", style="green")
