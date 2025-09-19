@@ -899,4 +899,4 @@ class MultiChainAnalyticsOrchestrator:
             await self.client.close()
         
         if self.db_client:
-            await self.db_client.close()
+            self.db_client.close()  # close() is not async
