@@ -261,18 +261,28 @@ class BlockchainInfluxDB:
                 if "fields" in point_data:
                     for field_key, field_value in point_data["fields"].items():
                         if field_value is not None:
-                            # Smart handling of large integers to avoid both overflow and field type conflicts
+                            # Handle field type consistency - always convert large number fields to string
+                            # to avoid integer overflow AND field type conflicts
                             if isinstance(field_value, int):
-                                # InfluxDB integer range: -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807
-                                max_int = 9223372036854775807
-                                min_int = -9223372036854775808
+                                # Fields that commonly contain large blockchain values should always be strings
+                                large_number_fields = {
+                                    'value', 'amount_in', 'amount_out', 'amount0', 'amount1', 
+                                    'token_id', 'liquidity_delta', 'total_liquidity',
+                                    'total_value_transferred', 'gas_used', 'gas_limit'
+                                }
                                 
-                                if field_value > max_int or field_value < min_int:
-                                    # Value is too large for InfluxDB integer, convert to string
+                                if field_key in large_number_fields:
+                                    # Always store as string to ensure consistency
                                     point = point.field(field_key, str(field_value))
                                 else:
-                                    # Value fits in InfluxDB integer range, keep as integer
-                                    point = point.field(field_key, field_value)
+                                    # Small integers can remain as integers
+                                    max_int = 9223372036854775807
+                                    min_int = -9223372036854775808
+                                    
+                                    if field_value > max_int or field_value < min_int:
+                                        point = point.field(field_key, str(field_value))
+                                    else:
+                                        point = point.field(field_key, field_value)
                             else:
                                 # Non-integer values, store as-is
                                 point = point.field(field_key, field_value)
@@ -384,12 +394,31 @@ class BlockchainInfluxDB:
             logger.error(f"Error deleting data from {measurement}: {e}")
             raise
     
+    async def clear_analytics_data(self):
+        """Clear analytics data that has field type conflicts."""
+        try:
+            analytics_measurements = [
+                'token_transfers', 'dex_swaps', 'dex_liquidity', 'defi_events'
+            ]
+            
+            logger.info("Clearing analytics measurements to fix field type conflicts...")
+            for measurement in analytics_measurements:
+                try:
+                    await self.delete_data(measurement)
+                    logger.info(f"Cleared measurement: {measurement}")
+                except Exception as e:
+                    logger.warning(f"Could not clear measurement {measurement}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error clearing analytics data: {e}")
+            raise
+    
     async def clear_all_data(self):
         """Clear all data from the bucket."""
         try:
             measurements = [
                 'blocks', 'transactions', 'events', 'token_transfers',
-                'dex_swaps', 'liquidity_events', 'defi_events',
+                'dex_swaps', 'liquidity_events', 'defi_events', 'dex_liquidity',
                 'wallet_analytics', 'contract_analytics', 'network_metrics',
                 'contracts'
             ]
