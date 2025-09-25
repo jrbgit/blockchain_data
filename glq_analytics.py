@@ -65,7 +65,7 @@ async def run_multichain_monitor(chains: Optional[List[str]] = None, interval: i
 async def run_multichain_test():
     """Run multi-chain connectivity tests"""
     print("Running multi-chain connectivity tests...")
-    os.system("python test_multichain_simple.py")
+    os.system("python tests/test_multichain_simple.py")
 
 def main():
     parser = argparse.ArgumentParser(
