@@ -5,6 +5,7 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - **Python 3.12+** (recommended: Python 3.12 or higher)
 - **Operating System**: Ubuntu Linux / WSL (Windows Subsystem for Linux)
 - **GLQ Chain node running** (Docker container `glq-chain`)
@@ -15,56 +16,65 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 This project is optimized for **Linux/WSL environments**. If you're migrating from Windows, follow these steps:
 
 1. **Create Virtual Environment**
+
    ```bash
    # Create a new virtual environment (Linux/WSL compatible)
    python3 -m venv venv
-   
+
    # Activate the virtual environment
    source venv/bin/activate
-   
+
    # Upgrade pip to latest version
    python -m pip install --upgrade pip
-   ```
+   ```bash
 
 2. **Install Dependencies**
+
    ```bash
    # Install all required packages
    pip install -r requirements.txt
-   ```
+   ```bash
 
 3. **Configure Environment**
+
    - Copy `.env.example` to `.env` and configure your settings:
+
      ```bash
      cp .env.example .env
      ```
+
    - Configure InfluxDB:
-     * Go to http://localhost:8086
-     * Create an organization called `glq-analytics`
-     * Create a bucket called `blockchain_data`
-     * Generate an API token
+     - Go to <http://localhost:8086>
+     - Create an organization called `glq-analytics`
+     - Create a bucket called `blockchain_data`
+     - Generate an API token
    - Update your `.env` file with the actual token:
-     ```
+
+     ```env
      INFLUX_TOKEN=your_actual_token_here
      INFURA_PROJECT_ID=your_infura_project_id_here
-     ```
+     ```bash
 
 4. **Test the Setup**
+
    ```bash
    python glq_analytics.py test
    # or directly:
    python tests/test_sync_setup.py
-   ```
+   ```bash
 
 5. **Run Full Blockchain Sync**
+
    ```bash
    python glq_analytics.py sync
-   ```
+   ```bash
 
 ### Virtual Environment Management
 
-**Important**: If you're migrating from Windows to WSL/Linux, the existing virtual environment won't work due to different binary formats. 
+**Important**: If you're migrating from Windows to WSL/Linux, the existing virtual environment won't work due to different binary formats.
 
 To recreate the virtual environment:
+
 ```bash
 # Remove old Windows venv (if it exists)
 rm -rf venv
@@ -76,9 +86,10 @@ python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
-```
+```bash
 
 **Daily Usage:**
+
 ```bash
 # Always activate the virtual environment before working
 source venv/bin/activate
@@ -99,25 +110,27 @@ deactivate
 6. **Real-time Monitoring System** - Live blockchain monitoring with web dashboard
 
 ### 🧪 System Test Results
-```
+
+```text
 ✅ Configuration: PASS
 ✅ Blockchain: PASS (Chain ID: 614, Latest Block: 5.45M+)
 ✅ InfluxDB: PASS (Ready for data storage)
 ✅ Historical Processor: PASS (67+ blocks/sec processing rate)
 ✅ Real-time Monitor: PASS (Live monitoring with web dashboard)
-```
+```bash
 
 ### 🐧 Linux/WSL Compatibility
-```
+
+```text
 ✅ Ubuntu/WSL Environment: PASS
 ✅ Python 3.12+ Virtual Environment: PASS
 ✅ All Dependencies Installed: PASS
 ✅ Cross-Platform Compatibility: PASS
-```
+```bash
 
 ## 📁 Project Structure
 
-```
+```text
 blockchain_data/
 ├── 📁 src/                    # Core source code
 │   ├── 📁 analytics/          # Advanced analytics modules
@@ -136,18 +149,20 @@ blockchain_data/
 ├── requirements.txt          # Dependencies
 ├── README.md                 # This file
 └── WARP.md                   # WARP.dev development guide
-```
+```bash
 
 ## 🔧 System Architecture
 
 ### Data Flow
-```
+
+```text
 GLQ Chain RPC → Blockchain Client → Data Processors → InfluxDB → Analytics
-```
+```bash
 
 ### Core Components
 
 #### 1. Blockchain Client (`src/core/blockchain_client.py`)
+
 - Async HTTP client with connection pooling
 - Rate limiting and retry logic
 - Batch block retrieval
@@ -155,12 +170,14 @@ GLQ Chain RPC → Blockchain Client → Data Processors → InfluxDB → Analyti
 - Event/log extraction
 
 #### 2. InfluxDB Client (`src/core/influxdb_client.py`)
+
 - Optimized for time-series blockchain data
 - Measurements: blocks, transactions, events, token_transfers, contracts, etc.
 - Efficient batch writing
 - Query capabilities for analytics
 
 #### 3. Historical Processor (`src/processors/historical_clean.py`)
+
 - Parallel batch processing
 - Progress tracking with Rich UI
 - Resumable processing (checks database for latest block)
@@ -170,12 +187,14 @@ GLQ Chain RPC → Blockchain Client → Data Processors → InfluxDB → Analyti
 ## 📈 Analytics Capabilities
 
 ### Current Data Extraction
+
 - **Block Data**: Gas usage, block times, transaction counts
 - **Transaction Data**: Gas fees, transaction types, success/failure rates
 - **Event Data**: Smart contract events and logs
 - **Network Metrics**: Real-time network statistics
 
 ### Planned Analytics (Next Phase)
+
 - **Token Analytics**: ERC-20/721/1155 transfer tracking
 - **DEX Analytics**: Swap volumes, liquidity changes
 - **DeFi Metrics**: Lending, staking, yield farming activity
@@ -198,12 +217,14 @@ See `config/influxdb_schema.md` for complete schema documentation.
 ## ⚙️ Configuration
 
 ### Main Config (`config/config.yaml`)
+
 - Blockchain connection settings
 - InfluxDB configuration
 - Processing parameters (batch size, workers, etc.)
 - Analytics feature flags
 
 ### Environment Variables (`.env`)
+
 - `INFLUX_TOKEN` - InfluxDB API token
 - `INFLUX_ORG` - InfluxDB organization
 - `INFLUX_BUCKET` - InfluxDB bucket name
@@ -212,6 +233,7 @@ See `config/influxdb_schema.md` for complete schema documentation.
 ## 🔄 Processing Performance
 
 ### Current Performance (Production)
+
 - **Processing Rate**: ~67 blocks/second (actual achieved)
 - **Historical Sync**: 5.45M+ blocks completed (839K+ transactions)
 - **Batch Size**: 1000 blocks (configurable)
@@ -220,6 +242,7 @@ See `config/influxdb_schema.md` for complete schema documentation.
 - **Real-time Monitoring**: 2-second polling with live dashboard
 
 ### Sync Status - COMPLETE ✅
+
 - **Total Blocks Processed**: 5,450,971+ blocks
 - **Total Transactions**: 839,575+ transactions
 - **Actual Sync Time**: ~22.4 hours (much better than estimated!)
@@ -228,23 +251,27 @@ See `config/influxdb_schema.md` for complete schema documentation.
 ## 🚧 Next Development Phase
 
 ### Priority 1: Real-time Monitoring ✅ COMPLETE
+
 - [x] Polling-based real-time block monitor
 - [x] Immediate processing of new blocks
 - [x] Live dashboard with real-time updates
 
 ### Priority 2: Advanced Analytics
+
 - [ ] ERC token transfer decoder
 - [ ] DEX swap detection and analysis
 - [ ] DeFi protocol interaction tracking
 - [ ] Wallet clustering algorithms
 
 ### Priority 3: Dashboard & Visualization
+
 - [ ] Grafana dashboard setup
 - [ ] Key metrics visualization
 - [ ] Real-time monitoring alerts
 - [ ] Historical trend analysis
 
 ### Priority 4: Advanced Features
+
 - [ ] Machine learning for anomaly detection
 - [ ] Transaction pattern analysis
 - [ ] Network health monitoring
@@ -253,18 +280,21 @@ See `config/influxdb_schema.md` for complete schema documentation.
 ## 📝 Usage Examples
 
 ### Environment Activation (Always First!)
+
 ```bash
 # Activate virtual environment before any commands
 source venv/bin/activate
 ```
 
 ### Run Historical Sync (COMPLETED)
+
 ```bash
 # Process all historical blocks (COMPLETED - 5.45M+ blocks processed)
 python src/processors/historical_clean.py
 ```
 
 ### Start Real-time Monitoring
+
 ```bash
 # Using main entry point
 python glq_analytics.py monitor    # Real-time monitoring
@@ -277,12 +307,14 @@ python scripts/start_monitor_service.py
 ```
 
 ### Test with Limited Blocks
+
 ```python
 # In historical_clean.py, modify the main() function:
 success = await processor.run_historical_processing(max_blocks=1000)
 ```
 
 ### Query Analytics Data
+
 ```python
 from core.influxdb_client import BlockchainInfluxDB
 from core.config import Config
@@ -300,16 +332,19 @@ activity_df = db.query_address_activity("0x123...", days=7)
 ## 🛠️ Maintenance
 
 ### Log Files
+
 - System logs: `logs/test_setup.log`
 - Historical processing: `logs/historical_processing.log`
 - Application logs: `logs/blockchain_analytics.log`
 
 ### Data Retention
+
 - Raw blockchain data: 1 year
-- Aggregated analytics: 5 years  
+- Aggregated analytics: 5 years
 - Real-time monitoring: 30 days
 
 ### Health Monitoring
+
 - Blockchain RPC connectivity
 - InfluxDB connection status
 - Processing lag detection
@@ -318,12 +353,14 @@ activity_df = db.query_address_activity("0x123...", days=7)
 ## 🐧 Linux/WSL Specific Notes
 
 ### System Requirements
+
 - **OS**: Ubuntu 20.04+ or compatible Linux distribution
 - **WSL**: WSL2 recommended for Windows users
 - **Python**: Python 3.12+ (install via `sudo apt install python3.12 python3.12-venv`)
 - **Git**: Version control (`sudo apt install git`)
 
 ### Common Linux/WSL Commands
+
 ```bash
 # Check Python version
 python3 --version
@@ -343,7 +380,9 @@ df -h
 ```
 
 ### File Permissions
+
 All scripts and configuration files should have appropriate permissions:
+
 ```bash
 # Make scripts executable if needed
 chmod +x scripts/*.py
@@ -391,22 +430,25 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
    - Reduce batch size if memory limited
 
 4. **Virtual Environment Issues**
+
    ```bash
    # If venv activation fails
    rm -rf venv
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
-   ```
+   ```bash
 
 5. **Permission Errors (Linux/WSL)**
+
    ```bash
    # Fix file permissions
    chmod +x glq_analytics.py
    chmod +x scripts/*.py
-   ```
+   ```bash
 
 ### Getting Help
+
 - Check logs in `logs/` directory
 - Run `python test_setup.py` to verify setup
 - Review configuration in `config/config.yaml`
@@ -419,6 +461,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 **MAJOR MILESTONE: Full System Operational on Linux/WSL!** 🎉
 
 ✅ **Production-Ready Analytics Platform:**
+
 - **Complete Historical Data**: 5.45M+ blocks processed (839K+ transactions)
 - **Real-time Monitoring**: Live blockchain monitoring with web dashboard
 - **High-Performance Processing**: 67+ blocks/sec achieved
@@ -427,6 +470,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 - **Cross-Platform**: Now fully compatible with Linux/WSL environments
 
 ✅ **System Status: OPERATIONAL**
+
 1. ✅ InfluxDB setup complete with full dataset
 2. ✅ Historical sync complete (all 5.45M+ blocks)
 3. ✅ Real-time monitoring active and functional
@@ -434,9 +478,10 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 5. ⭯ Advanced analytics modules (next priority)
 
 🚀 **What's Working Right Now:**
+
 - Complete GLQ Chain blockchain history in InfluxDB
 - Real-time block processing as new blocks arrive
-- Web dashboard at http://localhost:8000/dashboard
+- Web dashboard at <http://localhost:8000/dashboard>
 - API endpoints for programmatic access
 - Command-line monitoring tools
 - **Full Linux/WSL compatibility with proper virtual environment**
@@ -444,7 +489,9 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 The system is now a **fully operational blockchain analytics platform** capable of handling the complete GLQ Chain dataset with real-time updates, optimized for Linux/WSL environments. Ready for advanced analytics development!
 
 ### Migration Notes
+
 If migrating from Windows to WSL/Linux:
+
 1. ✅ Virtual environment recreated for Linux compatibility
 2. ✅ All dependencies reinstalled and verified
 3. ✅ File permissions and paths updated for Linux
