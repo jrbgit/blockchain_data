@@ -5,18 +5,34 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- GLQ Chain node running (Docker container `glq-chain`)
-- InfluxDB 2.x running (Docker container `lcw-influxdb`)
+- **Python 3.12+** (recommended: Python 3.12 or higher)
+- **Operating System**: Ubuntu Linux / WSL (Windows Subsystem for Linux)
+- **GLQ Chain node running** (Docker container `glq-chain`)
+- **InfluxDB 2.x running** (Docker container `lcw-influxdb`)
 
-### Setup Steps
+### Environment Setup
 
-1. **Install Dependencies**
+This project is optimized for **Linux/WSL environments**. If you're migrating from Windows, follow these steps:
+
+1. **Create Virtual Environment**
    ```bash
+   # Create a new virtual environment (Linux/WSL compatible)
+   python3 -m venv venv
+   
+   # Activate the virtual environment
+   source venv/bin/activate
+   
+   # Upgrade pip to latest version
+   python -m pip install --upgrade pip
+   ```
+
+2. **Install Dependencies**
+   ```bash
+   # Install all required packages
    pip install -r requirements.txt
    ```
 
-2. **Configure Environment**
+3. **Configure Environment**
    - Copy `.env.example` to `.env` and configure your settings:
      ```bash
      cp .env.example .env
@@ -32,17 +48,44 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
      INFURA_PROJECT_ID=your_infura_project_id_here
      ```
 
-3. **Test the Setup**
+4. **Test the Setup**
    ```bash
    python glq_analytics.py test
    # or directly:
    python tests/test_sync_setup.py
    ```
 
-4. **Run Full Blockchain Sync**
+5. **Run Full Blockchain Sync**
    ```bash
    python glq_analytics.py sync
    ```
+
+### Virtual Environment Management
+
+**Important**: If you're migrating from Windows to WSL/Linux, the existing virtual environment won't work due to different binary formats. 
+
+To recreate the virtual environment:
+```bash
+# Remove old Windows venv (if it exists)
+rm -rf venv
+
+# Create new Linux-compatible venv
+python3 -m venv venv
+
+# Activate and install dependencies
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**Daily Usage:**
+```bash
+# Always activate the virtual environment before working
+source venv/bin/activate
+
+# When done working, deactivate (optional)
+deactivate
+```
 
 ## 📊 Current Status
 
@@ -64,6 +107,14 @@ A comprehensive real-time blockchain analytics system for the GraphLinq Chain ne
 ✅ Real-time Monitor: PASS (Live monitoring with web dashboard)
 ```
 
+### 🐧 Linux/WSL Compatibility
+```
+✅ Ubuntu/WSL Environment: PASS
+✅ Python 3.12+ Virtual Environment: PASS
+✅ All Dependencies Installed: PASS
+✅ Cross-Platform Compatibility: PASS
+```
+
 ## 📁 Project Structure
 
 ```
@@ -80,8 +131,11 @@ blockchain_data/
 ├── 📁 docs/                  # Documentation
 ├── 📁 config/                # Configuration files
 ├── 📁 examples/              # Usage examples
+├── 📁 venv/                  # Python virtual environment (Linux/WSL)
 ├── glq_analytics.py          # Main entry point
-└── requirements.txt          # Dependencies
+├── requirements.txt          # Dependencies
+├── README.md                 # This file
+└── WARP.md                   # WARP.dev development guide
 ```
 
 ## 🔧 System Architecture
@@ -198,6 +252,12 @@ See `config/influxdb_schema.md` for complete schema documentation.
 
 ## 📝 Usage Examples
 
+### Environment Activation (Always First!)
+```bash
+# Activate virtual environment before any commands
+source venv/bin/activate
+```
+
 ### Run Historical Sync (COMPLETED)
 ```bash
 # Process all historical blocks (COMPLETED - 5.45M+ blocks processed)
@@ -255,6 +315,43 @@ activity_df = db.query_address_activity("0x123...", days=7)
 - Processing lag detection
 - Error rate monitoring
 
+## 🐧 Linux/WSL Specific Notes
+
+### System Requirements
+- **OS**: Ubuntu 20.04+ or compatible Linux distribution
+- **WSL**: WSL2 recommended for Windows users
+- **Python**: Python 3.12+ (install via `sudo apt install python3.12 python3.12-venv`)
+- **Git**: Version control (`sudo apt install git`)
+
+### Common Linux/WSL Commands
+```bash
+# Check Python version
+python3 --version
+
+# Install Python pip if missing
+sudo apt update
+sudo apt install python3-pip
+
+# Check virtual environment status
+which python  # Should show path in venv when activated
+
+# List installed packages
+pip list
+
+# Check disk space for database
+df -h
+```
+
+### File Permissions
+All scripts and configuration files should have appropriate permissions:
+```bash
+# Make scripts executable if needed
+chmod +x scripts/*.py
+
+# Verify file permissions
+ls -la
+```
+
 ## 📚 Documentation
 
 This project includes comprehensive documentation:
@@ -264,6 +361,7 @@ This project includes comprehensive documentation:
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development guidelines
 - **[docs/ANALYTICS.md](docs/ANALYTICS.md)** - Detailed analytics modules documentation
 - **[docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)** - Project architecture guide
+- **[WARP.md](WARP.md)** - WARP.dev development environment guide
 
 ## 🤝 Contributing
 
@@ -292,16 +390,33 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
    - Increase `MAX_WORKERS` in `.env`
    - Reduce batch size if memory limited
 
+4. **Virtual Environment Issues**
+   ```bash
+   # If venv activation fails
+   rm -rf venv
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+5. **Permission Errors (Linux/WSL)**
+   ```bash
+   # Fix file permissions
+   chmod +x glq_analytics.py
+   chmod +x scripts/*.py
+   ```
+
 ### Getting Help
 - Check logs in `logs/` directory
 - Run `python test_setup.py` to verify setup
 - Review configuration in `config/config.yaml`
+- Ensure virtual environment is activated: `source venv/bin/activate`
 
 ---
 
 ## 🎯 Current Status Summary
 
-**MAJOR MILESTONE: Full System Operational!** 🎉
+**MAJOR MILESTONE: Full System Operational on Linux/WSL!** 🎉
 
 ✅ **Production-Ready Analytics Platform:**
 - **Complete Historical Data**: 5.45M+ blocks processed (839K+ transactions)
@@ -309,12 +424,14 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 - **High-Performance Processing**: 67+ blocks/sec achieved
 - **Zero Downtime**: Robust error handling and automatic recovery
 - **Comprehensive Analytics**: Foundation for advanced DeFi/DEX analytics
+- **Cross-Platform**: Now fully compatible with Linux/WSL environments
 
 ✅ **System Status: OPERATIONAL**
 1. ✅ InfluxDB setup complete with full dataset
 2. ✅ Historical sync complete (all 5.45M+ blocks)
 3. ✅ Real-time monitoring active and functional
-4. ⭯ Advanced analytics modules (next priority)
+4. ✅ Linux/WSL environment compatibility verified
+5. ⭯ Advanced analytics modules (next priority)
 
 🚀 **What's Working Right Now:**
 - Complete GLQ Chain blockchain history in InfluxDB
@@ -322,5 +439,14 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for detailed development guidelines.
 - Web dashboard at http://localhost:8000/dashboard
 - API endpoints for programmatic access
 - Command-line monitoring tools
+- **Full Linux/WSL compatibility with proper virtual environment**
 
-The system is now a **fully operational blockchain analytics platform** capable of handling the complete GLQ Chain dataset with real-time updates. Ready for advanced analytics development!
+The system is now a **fully operational blockchain analytics platform** capable of handling the complete GLQ Chain dataset with real-time updates, optimized for Linux/WSL environments. Ready for advanced analytics development!
+
+### Migration Notes
+If migrating from Windows to WSL/Linux:
+1. ✅ Virtual environment recreated for Linux compatibility
+2. ✅ All dependencies reinstalled and verified
+3. ✅ File permissions and paths updated for Linux
+4. ✅ Documentation updated with Linux-specific instructions
+5. ✅ Cross-platform compatibility maintained
